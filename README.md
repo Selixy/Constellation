@@ -1,3 +1,3 @@
-# Constelation
+# Constellation
 
 Dépôt initial.
