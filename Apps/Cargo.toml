@@ -1,0 +1,3 @@
+[workspace]
+members = ["Server", "ClientNDI"]
+resolver = "2"
