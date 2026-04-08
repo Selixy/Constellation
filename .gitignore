@@ -30,6 +30,7 @@ UserSettings/
 *.mdb
 *.opendb
 *.VC.db
+*.slnx
 
 # Unity package cache
 **/Library/PackageCache/
