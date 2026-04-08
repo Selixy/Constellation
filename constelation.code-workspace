@@ -1,0 +1,129 @@
+{
+  "folders": [
+    {
+      "name": "Root",
+      "path": "."
+    },
+    {
+      "name": "App",
+      "path": "Apps"
+    },
+    {
+      "name": "Dist",
+      "path": "Dist"
+    },
+    {
+      "name": "Unity_Script",
+      "path": ""
+    }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "rust-analyzer.linkedProjects": [
+      "${workspaceFolder}/Apps/Cargo.toml"
+    ],
+    "files.exclude": {
+      "**/*.meta": true,
+      "**/*.asset": true,
+      "**/*.inputactions": true,
+      "**/*.slnx": true,
+      "**/target": true,
+      "**/.venv": true,
+      "**/node_modules": true,
+      "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/.DS_Store": true,
+      "**/Thumbs.db": true,
+      "**/*.blend1": true,
+      "**/*.blend2": true
+    }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "presentation": {
+      "echo": true,
+      "reveal": "always",
+      "focus": false,
+      "panel": "shared"
+    },
+    "tasks": [
+      {
+        "label": "🔨 Build: Windows (release → Dist/windows)",
+        "type": "shell",
+        "command": "uv",
+        "args": [
+          "run",
+          "build.py",
+          "windows"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": false
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared",
+          "echo": true
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "🔨 Build: Linux (release → Dist/linux)",
+        "type": "shell",
+        "command": "uv",
+        "args": [
+          "run",
+          "build.py",
+          "linux"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": false
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared",
+          "echo": true
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "🔨 Build: All (Windows + Linux)",
+        "type": "shell",
+        "command": "uv",
+        "args": [
+          "run",
+          "build.py",
+          "all"
+        ],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared",
+          "echo": true
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "📦 Setup: Install uv (if needed)",
+        "type": "shell",
+        "command": "python3",
+        "args": [
+          "-m",
+          "pip",
+          "install",
+          "uv"
+        ],
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared",
+          "echo": true
+        },
+        "problemMatcher": []
+      }
+    ]
+  }
+}
