@@ -2,5 +2,15 @@
 name = "riverflow-client-ndi"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
+
+[features]
+default = []
+ndi = ["dep:grafton-ndi"]
 
 [dependencies]
+font8x8 = "0.3"
+grafton-ndi = { version = "0.11", optional = true }
+minifb = "0.27"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
