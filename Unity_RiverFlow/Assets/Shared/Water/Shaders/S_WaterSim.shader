@@ -106,7 +106,9 @@ Shader "Hidden/WaterSim"
 
                     float2 diff_world = (i.uv - aUV) * _WaterPlaneSize.xy;
                     float  dist_world = length(diff_world) + 0.0001;
-                    float2 dir_vel    = (diff_world / dist_world) / _WaterPlaneSize.xy;
+                    // ✅ Normaliser le vecteur directionnel (magnitude 1, direction correcte)
+                    // (avant : divisé par _WaterPlaneSize qui l'écrasait)
+                    float2 dir_vel    = diff_world / dist_world;
 
                     if (a.isImpact == 1)
                     {
