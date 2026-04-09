@@ -6444,6 +6444,26 @@ PrefabInstance:
       propertyPath: m_Name
       value: 3D-O_Water
       objectReference: {fileID: 0}
+    - target: {fileID: 5177012538129313002, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
+      propertyPath: damping
+      value: 0.999
+      objectReference: {fileID: 0}
+    - target: {fileID: 5177012538129313002, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
+      propertyPath: stampStrength
+      value: 1.69
+      objectReference: {fileID: 0}
+    - target: {fileID: 5177012538129313002, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
+      propertyPath: impactLifetime
+      value: 12.65
+      objectReference: {fileID: 0}
+    - target: {fileID: 5177012538129313002, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
+      propertyPath: simulationSpeed
+      value: 0.14
+      objectReference: {fileID: 0}
+    - target: {fileID: 5177012538129313002, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
+      propertyPath: simStepsPerFrame
+      value: 8
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

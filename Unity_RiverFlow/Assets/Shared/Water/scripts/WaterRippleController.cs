@@ -37,9 +37,12 @@ public class WaterRippleController : MonoBehaviour
     [SerializeField] private int   maxInteractors  = 32;
 
     [Header("Simulation")]
+    [Tooltip("Multiplicateur global de la vitesse de simulation (ralenti ou acceléré)")]
+    [Range(0.1f, 5.0f)]
+    [SerializeField] private float simulationSpeed  = 1.0f;
     [Tooltip("Résolution de la texture de simulation")]
     [SerializeField] private int   resolution       = 512;
-    [Tooltip("Nombre de pas de physique par frame — augmente la vitesse de propagation")]
+    [Tooltip("Nombre de pas de physique par frame — augmente la précision")]
     [Range(1, 32)]
     [SerializeField] private int   simStepsPerFrame = 8;
     [Tooltip("Amortissement global par frame (0.999 = longue durée, 0.97 = courte)")]
@@ -61,6 +64,7 @@ public class WaterRippleController : MonoBehaviour
     private ComputeBuffer     _buffer;
     private WaterInteractor[] _data;
     private int               _currentCount;
+    private float             _pendingSteps;
 
     private RenderTexture _rtCurr, _rtNext, _rtSwap;
     private Material      _simMat;
@@ -209,20 +213,23 @@ public class WaterRippleController : MonoBehaviour
         Vector4 planeMin  = new Vector4(b.min.x, b.min.z, 0, 0);
         Vector4 planeSize = new Vector4(b.size.x, b.size.z, 0, 0);
 
-        float dt = Application.isPlaying ? Time.deltaTime : 0.016f;
+        float dt = (Application.isPlaying ? Time.deltaTime : 0.016f);
 
         _simMat.SetVector(ID_PlaneMin,  planeMin);
         _simMat.SetVector(ID_PlaneSize, planeSize);
 
-        // ── Pass 0 : Propagation Verlet (sub-stepping) ───────────────────────
-        // La vague avance de 0.5 texel/step. Avec simStepsPerFrame=8 et res=512 :
-        // 0.5 * 8 * 60fps / 512 ≈ 0.47 UV/s → traverse le plan en ~2s.
-        // Le damping est la racine N-ième pour garder le damping total constant.
+        // ── Pass 0 : Propagation Verlet (sub-stepping + vitesse variable) ──
+        _pendingSteps += simStepsPerFrame * simulationSpeed * (Application.isPlaying ? 1f : 0f);
+        if (!Application.isPlaying) _pendingSteps = simStepsPerFrame; // Fix editor constant rate
+        
+        int stepsToRun = Mathf.FloorToInt(_pendingSteps);
+        _pendingSteps -= stepsToRun;
+
         float dampPerStep = Mathf.Pow(damping, 1f / Mathf.Max(1, simStepsPerFrame));
         _simMat.SetFloat(ID_Damping,      dampPerStep);
         _simMat.SetFloat(ID_SimDeltaTime, dt);
 
-        for (int step = 0; step < simStepsPerFrame; step++)
+        for (int step = 0; step < stepsToRun; step++)
         {
             Graphics.Blit(_rtCurr, _rtNext, _simMat, 0);
             (_rtCurr, _rtNext) = (_rtNext, _rtCurr);
