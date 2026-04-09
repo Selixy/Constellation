@@ -2,17 +2,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Simule un champ de vélocité 2D (flow field) via ping-pong RenderTexture.
+/// Simule l'équation d'onde 2D (Wave Equation) via ping-pong RenderTexture.
 ///
 /// Chaque frame :
-///   1. Advection semi-Lagrangienne + dissipation  (Pass 0)
-///   2. Stamp des interacteurs (injection de vélocité radiale)  (Pass 1)
-///   3. Diffusion Laplacienne (viscosité) — crée des interactions entre fronts (Pass 2)
+///   1. Propagation de l'onde 2D (Pass 0)
+///   2. Stamp des interacteurs (injection de hauteur) (Pass 1)
 ///
 /// Expose _WaterFlowMap globalement pour S_Water.shader.
-///
-/// NOTE OpenGL : le StructuredBuffer _Interactors est bindé via _simMat.SetBuffer()
-/// (pas via Shader.SetGlobalBuffer qui n'est pas fiable sur OpenGL 4.5).
+/// On y stocke au final : R = Current Height, G = Previous Height.
 /// </summary>
 [ExecuteAlways]
 public class WaterRippleController : MonoBehaviour
@@ -43,19 +40,18 @@ public class WaterRippleController : MonoBehaviour
 
     [Header("Simulation")]
     [Tooltip("Résolution de la texture de simulation")]
-    [SerializeField] private int   resolution      = 4096;
-    [Tooltip("Rétention de vélocité par frame (0=instantané, 1=jamais dissipé)")]
-    [SerializeField] private float dissipation     = 0.98f;
-    [Tooltip("Rayon Gaussien du stamp en espace UV [0,1]")]
-    [SerializeField] private float stampRadius     = 0.15f;
-    [Tooltip("Amplitude de la vélocité injectée")]
-    [SerializeField] private float stampStrength   = 8.0f;
-    [Tooltip("Vitesse d'expansion de l'anneau d'impact (UV/s)")]
-    [SerializeField] private float ringExpandSpeed = 0.3f;
+    [SerializeField] private int   resolution      = 2048;
+    [Tooltip("Amortissement de la vague, très proche de 1.0 (0.97 = vite absorbé, 0.999 = longue durée)")]
+    [Range(0.9f, 0.999f)]
+    [SerializeField] private float damping         = 0.985f;
+    [Tooltip("Rayon local du stamp en espace UV [0,1]")]
+    [SerializeField] private float stampRadius     = 0.05f;
+    [Tooltip("Hauteur soulevée / abaissée")]
+    [SerializeField] private float stampStrength   = 4.0f;
+    [Tooltip("Vitesse d'expansion de l'impact dur (UV/s)")]
+    [SerializeField] private float ringExpandSpeed = 0.2f;
     [Tooltip("Taux de décroissance temporelle des impacts (1/s)")]
     [SerializeField] private float impactDecay     = 1.0f;
-    [Tooltip("Diffusion Laplacienne — étale la vélocité, crée des interactions entre fronts (0=off, max=0.24)")]
-    [SerializeField] private float viscosity       = 0.15f;
 
     // ── Singleton ────────────────────────────────────────────────────────────
     public static WaterRippleController Instance { get; private set; }
@@ -73,7 +69,7 @@ public class WaterRippleController : MonoBehaviour
     private readonly Dictionary<int, ImpactEntry> _persistents = new();
 
     // ── Property IDs ─────────────────────────────────────────────────────────
-    private static readonly int ID_Dissipation    = Shader.PropertyToID("_Dissipation");
+    private static readonly int ID_Damping        = Shader.PropertyToID("_Damping");
     private static readonly int ID_SimDeltaTime   = Shader.PropertyToID("_SimDeltaTime");
     private static readonly int ID_PlaneMin       = Shader.PropertyToID("_WaterPlaneMin");
     private static readonly int ID_PlaneSize      = Shader.PropertyToID("_WaterPlaneSize");
@@ -81,7 +77,6 @@ public class WaterRippleController : MonoBehaviour
     private static readonly int ID_StampStrength  = Shader.PropertyToID("_StampStrength");
     private static readonly int ID_RingExpandSpeed = Shader.PropertyToID("_RingExpandSpeed");
     private static readonly int ID_ImpactDecay    = Shader.PropertyToID("_ImpactDecay");
-    private static readonly int ID_Viscosity      = Shader.PropertyToID("_Viscosity");
     private static readonly int ID_FlowMap        = Shader.PropertyToID("_WaterFlowMap");
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -221,31 +216,32 @@ public class WaterRippleController : MonoBehaviour
 
         float dt = Application.isPlaying ? Time.deltaTime : 0.016f;
 
-        // ── Pass 0 : Advection + Dissipation ────────────────────────────────
-        var advected = RenderTexture.GetTemporary(resolution, resolution, 0, RenderTextureFormat.RGFloat);
-        advected.filterMode = FilterMode.Bilinear;
+        // ── Partage de données communes au shader ────────────────────────────
+        _simMat.SetVector(ID_PlaneMin,        planeMin);
+        _simMat.SetVector(ID_PlaneSize,       planeSize);
 
-        _simMat.SetFloat(ID_Dissipation,  dissipation);
+        // ── Pass 0 : Wave Equation (Propagation) ─────────────────────────────
+        _simMat.SetFloat(ID_Damping, damping);
         _simMat.SetFloat(ID_SimDeltaTime, dt);
-        Graphics.Blit(_rtCurr, advected, _simMat, 0);
+        Graphics.Blit(_rtCurr, _rtNext, _simMat, 0);
 
         // ── Pass 1 : Stamp des interacteurs ─────────────────────────────────
         // SetBuffer sur le MATERIAL (pas SetGlobal) — obligatoire sur OpenGL 4.5
         _simMat.SetBuffer("_Interactors",     _buffer);
         _simMat.SetInt   ("_InteractorCount", _currentCount);
-        _simMat.SetVector(ID_PlaneMin,        planeMin);
-        _simMat.SetVector(ID_PlaneSize,       planeSize);
         _simMat.SetFloat (ID_StampRadius,     stampRadius);
         _simMat.SetFloat (ID_StampStrength,   stampStrength);
         _simMat.SetFloat (ID_SimDeltaTime,    dt);
         _simMat.SetFloat (ID_RingExpandSpeed, ringExpandSpeed);
         _simMat.SetFloat (ID_ImpactDecay,     impactDecay);
-        Graphics.Blit(advected, _rtNext, _simMat, 1);
+        Graphics.Blit(_rtNext, _rtSwap, _simMat, 1);
 
-        RenderTexture.ReleaseTemporary(advected);
-
-        // ── Rotation curr ↔ next ─────────────────────────────────────────────
-        (_rtSwap, _rtCurr, _rtNext) = (_rtCurr, _rtNext, _rtSwap);
+        // ── Rotation des buffers ─────────────────────────────────────────────
+        // Le buffer Swap contient le nouvel état
+        var oldCurr = _rtCurr;
+        _rtCurr = _rtSwap;   // Le résultat final de cette frame
+        _rtSwap = _rtNext;   // L'intermediaire après Pass 0
+        _rtNext = oldCurr;   // L'ancien Current est libre pour la prochaine écriture
 
         // ── Expose la flow map au shader de rendu ────────────────────────────
         Shader.SetGlobalTexture(ID_FlowMap,  _rtCurr);
@@ -263,7 +259,7 @@ public class WaterRippleController : MonoBehaviour
 
     private RenderTexture CreateRT()
     {
-        var rt = new RenderTexture(resolution, resolution, 0, RenderTextureFormat.RGFloat)
+        var rt = new RenderTexture(resolution, resolution, 0, RenderTextureFormat.ARGBFloat)
         {
             filterMode = FilterMode.Bilinear,
             wrapMode   = TextureWrapMode.Clamp

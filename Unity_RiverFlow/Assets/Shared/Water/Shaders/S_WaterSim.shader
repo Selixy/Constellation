@@ -1,30 +1,23 @@
-// Simulation de champ de vélocité 2D — ping-pong RenderTexture (RGFloat)
-//
-// Pass 0 — Advection semi-Lagrangienne + Dissipation
-// Pass 1 — Stamp (injection vélocité radiale depuis les interacteurs)
-// Pass 2 — Diffusion Laplacienne (viscosité) → étale la vélocité, crée des interactions
-//
-// IMPORTANT : vertex shader utilise POSITION+TEXCOORD0 (appdata de Graphics.Blit).
-// NOTE OpenGL : _Interactors bindé via _simMat.SetBuffer() côté C#.
-
 Shader "Hidden/WaterSim"
 {
     SubShader
     {
         Cull Off ZWrite Off ZTest Always
 
-        // ── Pass 0 : Advection semi-Lagrangienne + Dissipation ────────────────
+        // --- PASS 0 : PROPAGATION DE LA HAUTEUR (ALGO HYPER CLASSIQUE D'EAU 2D) ---
+        // On repasse à l'onde "Standard" (height_new = hauteur basée sur ses voisins)
+        // car l'eau peu profonde Shallow Water 3D avec vitesse est complexe à faire rebondir sans éclater.
         Pass
         {
             HLSLPROGRAM
             #pragma vertex   vert
-            #pragma fragment frag_advect
+            #pragma fragment frag_wave
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
-            float  _Dissipation;
-            float  _SimDeltaTime;
+            float4 _MainTex_TexelSize;
+            float  _Damping; 
 
             struct Attributes { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
             struct Varyings   { float4 pos    : SV_POSITION; float2 uv : TEXCOORD0; };
@@ -40,20 +33,54 @@ Shader "Hidden/WaterSim"
                 return o;
             }
 
-            float4 frag_advect(Varyings i) : SV_Target
+            float4 frag_wave(Varyings i) : SV_Target
             {
-                float2 vel = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).rg;
+                float2 d = _MainTex_TexelSize.xy;
 
-                float2 srcUV  = saturate(i.uv - vel * _SimDeltaTime);
-                float2 newVel = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, srcUV).rg * _Dissipation;
+                // LECTURE MIROIR:
+                // Pour avoir un VRAI REBOND INFALLIBLE SUR LES BORDS:
+                // Au lieu de lire "rien" ou "hors shader", on lit physiquement le pixel miroir
+                // qui réfléchit la bosse (Conditions de Neumann parfaites)
+                float2 uvL = i.uv + float2(-d.x, 0.0); if(uvL.x < 0.0) uvL.x = d.x;
+                float2 uvR = i.uv + float2( d.x, 0.0); if(uvR.x > 1.0) uvR.x = 1.0 - d.x;
+                float2 uvD = i.uv + float2(0.0, -d.y); if(uvD.y < 0.0) uvD.y = d.y;
+                float2 uvU = i.uv + float2(0.0,  d.y); if(uvU.y > 1.0) uvU.y = 1.0 - d.y;
 
-                float2 bnd = smoothstep(0.0, 0.03, i.uv) * smoothstep(1.0, 0.97, i.uv);
-                return float4(newVel * bnd.x * bnd.y, 0.0, 0.0);
+                float3 center = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).rgb;
+                float h_L = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvL).z;
+                float h_R = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvR).z;
+                float h_D = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvD).z;
+                float h_U = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvU).z;
+
+                // La formule hyper stable des heightmaps d'eau 2D
+                // R = Ancienne hauteur, G = Rien pour le moment, Z = Hauteur Courante
+                
+                // height = center.z
+                // prev_height = center.r (stocké)
+                
+                float current_height = center.z;
+                float previous_height = center.r;
+                
+                // Formule de propagation d'onde classique avec amortissement (_Damping contrôlé)
+                // h_new = (voisins - h_prev) * damp; 
+                // Pour que ça ne plante jamais, avec inertie intégrée :
+                
+                float height_diff = ((h_L + h_R + h_D + h_U) / 2.0) - previous_height;
+                
+                // On dissipe l'onde très lentement avec Damping (0.99)
+                float new_height = height_diff * clamp(_Damping, 0.8, 0.999);
+
+                new_height = clamp(new_height, -5.0, 5.0);
+
+                // On sauvegarde : 
+                // Nouvelle 'Hauteur Courante' -> Dans Z
+                // Ancienne 'Hauteur Courante' (qui devient l'ancienne) -> Dans R
+                return float4(current_height, 0.0, new_height, 0.0);
             }
             ENDHLSL
         }
 
-        // ── Pass 1 : Stamp — injection de vélocité radiale ────────────────────
+        // --- PASS 1 : STAMP (RIPPLES) ---
         Pass
         {
             HLSLPROGRAM
@@ -93,7 +120,8 @@ Shader "Hidden/WaterSim"
 
             float4 frag_stamp(Varyings i) : SV_Target
             {
-                float2 vel = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).rg;
+                float3 center = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).rgb;
+                float height  = center.z;
 
                 for (int n = 0; n < _InteractorCount; n++)
                 {
@@ -105,87 +133,33 @@ Shader "Hidden/WaterSim"
                     #endif
 
                     float2 diff_world = (i.uv - aUV) * _WaterPlaneSize.xy;
-                    float  dist_world = length(diff_world) + 0.0001;
-                    // ✅ Normaliser le vecteur directionnel (magnitude 1, direction correcte)
-                    // (avant : divisé par _WaterPlaneSize qui l'écrasait)
-                    float2 dir_vel    = diff_world / dist_world;
+                    float dist_world = length(diff_world);
 
                     if (a.isImpact == 1)
                     {
                         float ring_r   = a.age * _RingExpandSpeed;
-                        float ring_w   = 0.025;
+                        float ring_w   = 0.005; 
                         float ringFall = exp(-pow(dist_world - ring_r * max(_WaterPlaneSize.x, _WaterPlaneSize.y), 2.0)
                                              / (ring_w * ring_w * _WaterPlaneSize.x * _WaterPlaneSize.x));
                         float timeFade = exp(-a.age * _ImpactDecay);
-                        vel += dir_vel * ringFall * timeFade * _StampStrength * 1.5;
+                        height += ringFall * timeFade * _StampStrength * 4.0;
                     }
                     else
                     {
-                        // Pied posé (persistant) : injection UNIQUEMENT au premier frame (age ≈ 0)
-                        // Après, n'injecte plus rien (laisse advection + dissipation calmer)
-                        float freshness = exp(-a.age * 5.0);  // Decay très rapide
-                        if (freshness > 0.1)  // Seulement si très frais
+                        float freshness = exp(-a.age * 5.0);
+                        if (freshness > 0.1)
                         {
                             float sr_world = _StampRadius * max(_WaterPlaneSize.x, _WaterPlaneSize.y);
                             float falloff  = exp(-dist_world * dist_world / (sr_world * sr_world));
-                            vel += dir_vel * falloff * _StampStrength * 0.1 * freshness;
+                            height -= falloff * _StampStrength * 0.5 * freshness;
                         }
                     }
                 }
 
-                vel = clamp(vel, -2.0, 2.0);
-                return float4(vel, 0.0, 0.0);
-            }
-            ENDHLSL
-        }
-
-        // ── Pass 2 : Diffusion Laplacienne (viscosité) ────────────────────────
-        // Étale la vélocité vers les voisins → les fronts se "rencontrent" et
-        // créent des tourbillons/interactions là où ils se croisent.
-        // Condition de stabilité : _Viscosity < 0.25 (sans facteur dt).
-        Pass
-        {
-            HLSLPROGRAM
-            #pragma vertex   vert
-            #pragma fragment frag_diffuse
-
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-
-            TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
-            float4 _MainTex_TexelSize; // auto-rempli par Unity lors du Blit
-            float  _Viscosity;         // 0 = aucune diffusion, 0.25 = max stable
-
-            struct Attributes { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
-            struct Varyings   { float4 pos    : SV_POSITION; float2 uv : TEXCOORD0; };
-
-            Varyings vert(Attributes v)
-            {
-                Varyings o;
-                o.pos = TransformObjectToHClip(v.vertex.xyz);
-                o.uv  = v.uv;
-                #if UNITY_UV_STARTS_AT_TOP
-                    o.uv.y = 1.0 - o.uv.y;
-                #endif
-                return o;
-            }
-
-            float4 frag_diffuse(Varyings i) : SV_Target
-            {
-                float2 d = _MainTex_TexelSize.xy;
-
-                float2 center = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv              ).rg;
-                float2 left   = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv + float2(-d.x, 0  )).rg;
-                float2 right  = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv + float2( d.x, 0  )).rg;
-                float2 up     = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv + float2( 0,   d.y)).rg;
-                float2 down   = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv + float2( 0,  -d.y)).rg;
-
-                // Laplacien discret : mesure la divergence locale de vélocité
-                float2 laplacian = left + right + up + down - 4.0 * center;
-                float2 result    = center + _Viscosity * laplacian;
-
-                // Réappliquer la frontière absorbante après diffusion
-                float2 bnd = smoothstep(0.0, 0.03, i.uv) * smoothstep(1.0, 0.97, i.uv);
-                return float4(result * bnd.x * bnd.y, 0.0, 0.0);
+                height = clamp(height, -5.0, 5.0);
+                
+                // On met à jour Z (Hauteur)
+                return float4(center.r, 0.0, height, 0.0);
             }
             ENDHLSL
         }
