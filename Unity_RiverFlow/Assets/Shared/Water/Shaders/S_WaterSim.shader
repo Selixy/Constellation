@@ -37,14 +37,13 @@ Shader "Hidden/WaterSim"
             {
                 float2 d = _MainTex_TexelSize.xy;
 
-                // LECTURE MIROIR:
-                // Pour avoir un VRAI REBOND INFALLIBLE SUR LES BORDS:
-                // Au lieu de lire "rien" ou "hors shader", on lit physiquement le pixel miroir
-                // qui réfléchit la bosse (Conditions de Neumann parfaites)
-                float2 uvL = i.uv + float2(-d.x, 0.0); if(uvL.x < 0.0) uvL.x = d.x;
-                float2 uvR = i.uv + float2( d.x, 0.0); if(uvR.x > 1.0) uvR.x = 1.0 - d.x;
-                float2 uvD = i.uv + float2(0.0, -d.y); if(uvD.y < 0.0) uvD.y = d.y;
-                float2 uvU = i.uv + float2(0.0,  d.y); if(uvU.y > 1.0) uvU.y = 1.0 - d.y;
+                // Condition de Neumann (h_ghost = h_bord) via saturate :
+                // WrapMode.Clamp + saturate() = le pixel fantôme hors domaine
+                // est identique au pixel de bord → gradient nul → rebond pur.
+                float2 uvL = float2(max(i.uv.x - d.x, 0.0),  i.uv.y);
+                float2 uvR = float2(min(i.uv.x + d.x, 1.0),  i.uv.y);
+                float2 uvD = float2(i.uv.x, max(i.uv.y - d.y, 0.0));
+                float2 uvU = float2(i.uv.x, min(i.uv.y + d.y, 1.0));
 
                 float3 center = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).rgb;
                 float h_L = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvL).z;
@@ -137,12 +136,18 @@ Shader "Hidden/WaterSim"
 
                     if (a.isImpact == 1)
                     {
-                        float ring_r   = a.age * _RingExpandSpeed;
-                        float ring_w   = 0.005; 
-                        float ringFall = exp(-pow(dist_world - ring_r * max(_WaterPlaneSize.x, _WaterPlaneSize.y), 2.0)
-                                             / (ring_w * ring_w * _WaterPlaneSize.x * _WaterPlaneSize.x));
-                        float timeFade = exp(-a.age * _ImpactDecay);
-                        height += ringFall * timeFade * _StampStrength * 4.0;
+                        // Impulsion ponctuelle courte : on injecte seulement pendant les
+                        // premières 0.06s. La wave equation propage ensuite un anneau
+                        // physique qui rebondit sur les bords (Neumann).
+                        // (l'ancien code dessinait l'anneau directement frame par frame
+                        //  → pas de rebond possible car hors physique)
+                        if (a.age < 0.06)
+                        {
+                            float sr_world = _StampRadius * max(_WaterPlaneSize.x, _WaterPlaneSize.y);
+                            float falloff  = exp(-dist_world * dist_world / (sr_world * sr_world));
+                            float burst    = 1.0 - (a.age / 0.06); // fondu rapide
+                            height += falloff * _StampStrength * 4.0 * burst;
+                        }
                     }
                     else
                     {

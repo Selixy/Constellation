@@ -40,10 +40,13 @@ public class WaterRippleController : MonoBehaviour
 
     [Header("Simulation")]
     [Tooltip("Résolution de la texture de simulation")]
-    [SerializeField] private int   resolution      = 2048;
-    [Tooltip("Amortissement de la vague, très proche de 1.0 (0.97 = vite absorbé, 0.999 = longue durée)")]
-    [Range(0.9f, 0.999f)]
-    [SerializeField] private float damping         = 0.985f;
+    [SerializeField] private int   resolution      = 512;
+    [Tooltip("Nombre de pas de physique par frame (vitesse de propagation × N). Augmenter pour voir le rebond.")]
+    [Range(1, 32)]
+    [SerializeField] private int   simStepsPerFrame = 8;
+    [Tooltip("Amortissement total par frame (0.999 = vague longue, 0.97 = vague courte)")]
+    [Range(0.9f, 0.9999f)]
+    [SerializeField] private float damping         = 0.999f;
     [Tooltip("Rayon local du stamp en espace UV [0,1]")]
     [SerializeField] private float stampRadius     = 0.05f;
     [Tooltip("Hauteur soulevée / abaissée")]
@@ -220,13 +223,24 @@ public class WaterRippleController : MonoBehaviour
         _simMat.SetVector(ID_PlaneMin,        planeMin);
         _simMat.SetVector(ID_PlaneSize,       planeSize);
 
-        // ── Pass 0 : Wave Equation (Propagation) ─────────────────────────────
-        _simMat.SetFloat(ID_Damping, damping);
+        // ── Pass 0 : Wave Equation (Propagation) — sub-stepping ─────────────
+        // La vague avance de 0.707 texel/step. Pour traverser 512px en ~1s il faut
+        // simStepsPerFrame=8 : 0.707 * 8 * 60fps / 512 ≈ 0.66 UV/s.
+        // Le damping par step est la racine N-ième du damping par frame.
+        float dampingPerStep = Mathf.Pow(damping, 1f / Mathf.Max(1, simStepsPerFrame));
+        _simMat.SetFloat(ID_Damping,      dampingPerStep);
         _simMat.SetFloat(ID_SimDeltaTime, dt);
-        Graphics.Blit(_rtCurr, _rtNext, _simMat, 0);
+
+        for (int step = 0; step < simStepsPerFrame; step++)
+        {
+            Graphics.Blit(_rtCurr, _rtNext, _simMat, 0);
+            // Swap curr ↔ next pour la prochaine itération
+            (_rtCurr, _rtNext) = (_rtNext, _rtCurr);
+        }
 
         // ── Pass 1 : Stamp des interacteurs ─────────────────────────────────
-        // SetBuffer sur le MATERIAL (pas SetGlobal) — obligatoire sur OpenGL 4.5
+        // Après la boucle de sub-steps, _rtCurr contient le résultat de propagation.
+        // On stamp dessus → résultat dans _rtNext.
         _simMat.SetBuffer("_Interactors",     _buffer);
         _simMat.SetInt   ("_InteractorCount", _currentCount);
         _simMat.SetFloat (ID_StampRadius,     stampRadius);
@@ -234,16 +248,15 @@ public class WaterRippleController : MonoBehaviour
         _simMat.SetFloat (ID_SimDeltaTime,    dt);
         _simMat.SetFloat (ID_RingExpandSpeed, ringExpandSpeed);
         _simMat.SetFloat (ID_ImpactDecay,     impactDecay);
-        Graphics.Blit(_rtNext, _rtSwap, _simMat, 1);
+        Graphics.Blit(_rtCurr, _rtNext, _simMat, 1);
 
-        // ── Rotation des buffers ─────────────────────────────────────────────
-        // Le buffer Swap contient le nouvel état
-        var oldCurr = _rtCurr;
-        _rtCurr = _rtSwap;   // Le résultat final de cette frame
-        _rtSwap = _rtNext;   // L'intermediaire après Pass 0
-        _rtNext = oldCurr;   // L'ancien Current est libre pour la prochaine écriture
+        // ── Rotation finale ───────────────────────────────────────────────────
+        // _rtNext = résultat final (après stamp)
+        // _rtCurr = libre pour la prochaine frame
+        (_rtCurr, _rtNext) = (_rtNext, _rtCurr);
 
         // ── Expose la flow map au shader de rendu ────────────────────────────
+        // _rtCurr contient l'état final après propagation + stamp
         Shader.SetGlobalTexture(ID_FlowMap,  _rtCurr);
         Shader.SetGlobalVector (ID_PlaneMin,  planeMin);
         Shader.SetGlobalVector (ID_PlaneSize, planeSize);
