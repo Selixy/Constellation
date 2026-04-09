@@ -117,13 +117,19 @@ Shader "Hidden/WaterSim"
                         float ringFall = exp(-pow(dist_world - ring_r * max(_WaterPlaneSize.x, _WaterPlaneSize.y), 2.0)
                                              / (ring_w * ring_w * _WaterPlaneSize.x * _WaterPlaneSize.x));
                         float timeFade = exp(-a.age * _ImpactDecay);
-                        vel += dir_vel * ringFall * timeFade * _StampStrength;
+                        vel += dir_vel * ringFall * timeFade * _StampStrength * 1.5;
                     }
                     else
                     {
-                        float sr_world = _StampRadius * max(_WaterPlaneSize.x, _WaterPlaneSize.y);
-                        float falloff  = exp(-dist_world * dist_world / (sr_world * sr_world));
-                        vel += dir_vel * falloff * _StampStrength * 0.15;
+                        // Pied posé (persistant) : injection UNIQUEMENT au premier frame (age ≈ 0)
+                        // Après, n'injecte plus rien (laisse advection + dissipation calmer)
+                        float freshness = exp(-a.age * 5.0);  // Decay très rapide
+                        if (freshness > 0.1)  // Seulement si très frais
+                        {
+                            float sr_world = _StampRadius * max(_WaterPlaneSize.x, _WaterPlaneSize.y);
+                            float falloff  = exp(-dist_world * dist_world / (sr_world * sr_world));
+                            vel += dir_vel * falloff * _StampStrength * 0.1 * freshness;
+                        }
                     }
                 }
 

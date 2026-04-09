@@ -43,9 +43,9 @@ public class WaterRippleController : MonoBehaviour
 
     [Header("Simulation")]
     [Tooltip("Résolution de la texture de simulation")]
-    [SerializeField] private int   resolution      = 256;
+    [SerializeField] private int   resolution      = 4096;
     [Tooltip("Rétention de vélocité par frame (0=instantané, 1=jamais dissipé)")]
-    [SerializeField] private float dissipation     = 0.992f;
+    [SerializeField] private float dissipation     = 0.98f;
     [Tooltip("Rayon Gaussien du stamp en espace UV [0,1]")]
     [SerializeField] private float stampRadius     = 0.15f;
     [Tooltip("Amplitude de la vélocité injectée")]
