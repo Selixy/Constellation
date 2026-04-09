@@ -13,12 +13,24 @@ PrefabInstance:
       value: Sprites_Fish_D
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 45
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalPosition.z
@@ -26,23 +38,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: aaa1d560a4c6f2446a0aa44d44a7053d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -96,6 +108,8 @@ MonoBehaviour:
   directionChangeInterval: 10
   speedVariation: 0.2
   turnSpeed: 1
+  boundsMin: {x: -7, y: 0, z: -32}
+  boundsMax: {x: 13, y: 5, z: 30}
   tailWaveAmplitude: 10
   tailWaveFrequency: 2
   finAnimationAmplitude: 10
