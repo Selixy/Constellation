@@ -19,6 +19,7 @@ UserSettings/
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -30,6 +31,7 @@ UserSettings/
 *.mdb
 *.opendb
 *.VC.db
+*.slnx
 
 # Unity package cache
 **/Library/PackageCache/
