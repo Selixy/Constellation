@@ -186,9 +186,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DragonflySpawner
   boundingBox: {fileID: 826440062}
-  dragonflyPrefab: {fileID: 8750329610894522586, guid: dba3bda9b2e34f945b6467d8368084fc, type: 3}
-  minSpawnDelay: 4
-  maxSpawnDelay: 10
+  dragonflyPrefabs:
+  - {fileID: 2555493790352867102, guid: 0081174ddfc471d4a8948267e76bb308, type: 3}
+  - {fileID: 6921487846883801610, guid: b70e6df644e69594c95665dc0d19181b, type: 3}
+  - {fileID: 663033693691199350, guid: 306954f5c49903e4d8cdfc4dc1765d12, type: 3}
+  minSpawnDelay: 2
+  maxSpawnDelay: 8
+  minScale: 0.05
+  maxScale: 0.12
+  yRotationOffset: 0
 --- !u!1 &897781952
 GameObject:
   m_ObjectHideFlags: 0

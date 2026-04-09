@@ -71,6 +71,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1584196253166453713}
+  - component: {fileID: 457549529988619924}
   - component: {fileID: 6437593743241647797}
   - component: {fileID: 2750179916055815759}
   - component: {fileID: 7689973781199942197}
@@ -89,14 +90,34 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 663033693691199350}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 55.98, y: -3.24, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 0.1, y: 0.1, z: 0.1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3158746234466413923}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+--- !u!114 &457549529988619924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 663033693691199350}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79f30ea4d6ada37428aa78c592fdbab7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DragonflyMovement
+  moveSpeed: 4
+  moveDurationMin: 1
+  moveDurationMax: 2
+  idleDurationMin: 0.5
+  idleDurationMax: 2
+  turnSpeed: 180
+  maxTurnAngle: 120
+  centerBias: 0.5
 --- !u!212 &6437593743241647797
 SpriteRenderer:
   serializedVersion: 2

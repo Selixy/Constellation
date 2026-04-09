@@ -4,11 +4,21 @@ using System.Collections;
 public class DragonflySpawner : MonoBehaviour
 {
     public BoxCollider boundingBox;
-    public GameObject dragonflyPrefab;
+
+    [Header("Dragonflies")]
+    public GameObject[] dragonflyPrefabs;
 
     [Header("Spawn Settings")]
     public float minSpawnDelay = 4f;
     public float maxSpawnDelay = 10f;
+
+    [Header("Scale Settings")]
+    public float minScale = 0.05f;
+    public float maxScale = 0.12f;
+
+    [Header("Sprite Orientation Offset")]
+    public float yRotationOffset = 0f; 
+    // 👉 mets 90 ou -90 si ton sprite regarde mal
 
     void Start()
     {
@@ -30,18 +40,29 @@ public class DragonflySpawner : MonoBehaviour
 
     void SpawnOne(Bounds bounds)
     {
+        if (dragonflyPrefabs.Length == 0) return;
+
         Vector3 spawnPos = GetRandomPointOnBounds(bounds);
 
+        // 🎯 direction vers centre (XZ uniquement)
         Vector3 center = bounds.center;
-        center.y = spawnPos.y;
+        Vector3 direction = center - spawnPos;
+        direction.y = 0f;
+        direction.Normalize();
 
-        Vector3 direction = (center - spawnPos).normalized;
+        // 👉 angle propre
+        float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
 
-        Quaternion rotation = Quaternion.LookRotation(direction);
-        
-        rotation = Quaternion.Euler(0, rotation.eulerAngles.y, 0);
+        // 🔥 rotation finale FIXE (X toujours 90)
+        Quaternion rotation = Quaternion.Euler(90f, angle + yRotationOffset, 0f);
 
-        Instantiate(dragonflyPrefab, spawnPos, rotation);
+        GameObject chosenPrefab = dragonflyPrefabs[Random.Range(0, dragonflyPrefabs.Length)];
+
+        GameObject obj = Instantiate(chosenPrefab, spawnPos, rotation);
+
+        // 🎲 scale
+        float scale = Random.Range(minScale, maxScale);
+        obj.transform.localScale = Vector3.one * scale;
     }
 
     Vector3 GetRandomPointOnBounds(Bounds bounds)
@@ -54,26 +75,16 @@ public class DragonflySpawner : MonoBehaviour
 
         switch (side)
         {
-            case 0: // +X
-                point.x = bounds.max.x;
-                point.z = Random.Range(bounds.min.z, bounds.max.z);
-                break;
-
-            case 1: // -X
-                point.x = bounds.min.x;
-                point.z = Random.Range(bounds.min.z, bounds.max.z);
-                break;
-
-            case 2: // +Z
-                point.z = bounds.max.z;
-                point.x = Random.Range(bounds.min.x, bounds.max.x);
-                break;
-
-            case 3: // -Z
-                point.z = bounds.min.z;
-                point.x = Random.Range(bounds.min.x, bounds.max.x);
-                break;
+            case 0: point.x = bounds.max.x; break;
+            case 1: point.x = bounds.min.x; break;
+            case 2: point.z = bounds.max.z; break;
+            case 3: point.z = bounds.min.z; break;
         }
+
+        if (side < 2)
+            point.z = Random.Range(bounds.min.z, bounds.max.z);
+        else
+            point.x = Random.Range(bounds.min.x, bounds.max.x);
 
         point.y = centerY;
 

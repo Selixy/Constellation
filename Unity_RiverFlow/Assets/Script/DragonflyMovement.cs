@@ -12,99 +12,107 @@ public class DragonflyMovement : MonoBehaviour
     public float idleDurationMin = 0.5f;
     public float idleDurationMax = 2f;
 
-    [Header("Rotation")]
-    public float rotationSpeed = 180f; // degrés/sec
+    [Header("Turn")]
+    public float turnSpeed = 180f;
     public float maxTurnAngle = 120f;
 
     [Header("Center Bias")]
     [Range(0f, 1f)]
-    public float centerBias = 0.25f; // 0 = random, 1 = vers centre
+    public float centerBias = 0.2f;
 
-    [Header("Spawner Reference")]
-    private BoxCollider boundingBox; // Bounding box récupérée automatiquement
+    private BoxCollider boundingBox;
+    private float fixedY;
 
-    private GameObject DragonflySpawner;
+    private bool isMoving;
 
-    private bool isMoving = false;
+    private Vector3 moveDirection = Vector3.forward;
 
     void Start()
     {
-        // Récupérer automatiquement le DragonflySpawner si non assigné
-        if (DragonflySpawner == null)
+        GameObject spawner = GameObject.Find("DragonflySpawner");
+
+        if (spawner != null)
         {
-            DragonflySpawner = GameObject.Find("DragonflySpawner"); // nom exact dans la scène
+            boundingBox = spawner.GetComponent<BoxCollider>();
+
+            if (boundingBox != null)
+            {
+                fixedY = boundingBox.bounds.center.y;
+            }
         }
 
-        if (DragonflySpawner != null)
-        {
-            boundingBox = DragonflySpawner.GetComponent<BoxCollider>();
-            if (boundingBox == null)
-                Debug.LogWarning("Aucun BoxCollider trouvé sur le DragonflySpawner !");
-        }
-        else
-        {
-            Debug.LogWarning("DragonflySpawner non trouvé dans la scène !");
-        }
-
-        StartCoroutine(BehaviorLoop());
+        StartCoroutine(StateLoop());
     }
 
     void Update()
     {
+        // 🚀 Mouvement en XZ monde (PAS transform.forward)
         if (isMoving)
         {
-            transform.position += transform.forward * moveSpeed * Time.deltaTime;
+            Vector3 move = moveDirection;
+            move.y = 0f;
+
+            transform.position += move.normalized * moveSpeed * Time.deltaTime;
         }
+
+        // 📏 Lock hauteur
+        Vector3 pos = transform.position;
+        pos.y = fixedY;
+        transform.position = pos;
 
         CheckBounds();
     }
 
-    IEnumerator BehaviorLoop()
+    IEnumerator StateLoop()
     {
         while (true)
         {
             // MOVE
             isMoving = true;
-            float moveTime = Random.Range(moveDurationMin, moveDurationMax);
-            yield return new WaitForSeconds(moveTime);
+            yield return new WaitForSeconds(Random.Range(moveDurationMin, moveDurationMax));
 
             // STOP
             isMoving = false;
-            float idleTime = Random.Range(idleDurationMin, idleDurationMax);
-            yield return new WaitForSeconds(idleTime);
+            yield return new WaitForSeconds(Random.Range(idleDurationMin, idleDurationMax));
 
             // TURN
-            yield return StartCoroutine(TurnRoutine());
+            yield return StartCoroutine(Turn());
         }
     }
 
-    IEnumerator TurnRoutine()
+    IEnumerator Turn()
     {
-        // Rotation aléatoire
+        // 🎲 direction aléatoire
         float randomAngle = Random.Range(-maxTurnAngle, maxTurnAngle);
-        Quaternion randomRotation = Quaternion.Euler(0, randomAngle, 0);
-        Vector3 randomDirection = randomRotation * transform.forward;
+        Vector3 randomDir = Quaternion.Euler(0f, randomAngle, 0f) * Vector3.forward;
 
-        // Direction vers le centre (si boundingBox existe)
+        // 🎯 direction vers centre
         Vector3 center = boundingBox != null ? boundingBox.bounds.center : Vector3.zero;
-        center.y = transform.position.y;
-        Vector3 toCenter = (center - transform.position).normalized;
+        Vector3 toCenter = center - transform.position;
+        toCenter.y = 0f;
+        toCenter = toCenter.normalized;
 
-        // Mélange des directions
-        Vector3 finalDirection = Vector3.Slerp(randomDirection, toCenter, centerBias).normalized;
-        Quaternion targetRotation = Quaternion.LookRotation(finalDirection);
+        // 🧠 mix intelligent
+        moveDirection = Vector3.Slerp(randomDir, toCenter, centerBias).normalized;
 
-        // Rotation progressive
-        while (Quaternion.Angle(transform.rotation, targetRotation) > 1f)
+        // 🔄 rotation Y uniquement (visuelle)
+        float targetY = Mathf.Atan2(moveDirection.x, moveDirection.z) * Mathf.Rad2Deg;
+
+        Quaternion targetRot = Quaternion.Euler(90f, targetY, 0f);
+
+        while (Quaternion.Angle(transform.rotation, targetRot) > 1f)
         {
             transform.rotation = Quaternion.RotateTowards(
                 transform.rotation,
-                targetRotation,
-                rotationSpeed * Time.deltaTime
+                targetRot,
+                turnSpeed * Time.deltaTime
             );
 
             yield return null;
         }
+
+        // 🔒 sécurité finale
+        transform.rotation = Quaternion.Euler(90f, targetY, 0f);
     }
 
     void CheckBounds()
