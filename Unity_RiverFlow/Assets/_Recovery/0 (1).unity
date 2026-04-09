@@ -163,33 +163,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1892ace0748aaffe3b2135d5ff40b47f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Debug_BootLoader
---- !u!1 &1248253417 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3107609551039286582, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
-  m_PrefabInstance: {fileID: 2092166326347070978}
-  m_PrefabAsset: {fileID: 0}
---- !u!64 &1248253422
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1248253417}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &1514766743
 GameObject:
   m_ObjectHideFlags: 0
@@ -230,10 +203,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1941494911144164727, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
-      propertyPath: halfRange
-      value: 10
-      objectReference: {fileID: 0}
     - target: {fileID: 2696659546185669712, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -281,10 +250,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 3107609551039286582, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1248253422}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b306811cb91ebacddb6c5c53197a4598, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
