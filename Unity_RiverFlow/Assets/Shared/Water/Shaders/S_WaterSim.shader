@@ -5,8 +5,8 @@ Shader "Hidden/WaterSim"
         Cull Off ZWrite Off ZTest Always
 
         // --- PASS 0 : PROPAGATION DE LA HAUTEUR (ALGO HYPER CLASSIQUE D'EAU 2D) ---
-        // On repasse à l'onde "Standard" (height_new = hauteur basée sur ses voisins)
-        // car l'eau peu profonde Shallow Water 3D avec vitesse est complexe à faire rebondir sans éclater.
+        // R = Ancienne hauteur (prev), G = inutilisé, B = Hauteur courante (curr)
+        // Formule Verlet : h_new = (voisins/2) - h_prev, puis * damping
         Pass
         {
             HLSLPROGRAM
@@ -17,7 +17,7 @@ Shader "Hidden/WaterSim"
 
             TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
             float4 _MainTex_TexelSize;
-            float  _Damping; 
+            float  _Damping;
 
             struct Attributes { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
             struct Varyings   { float4 pos    : SV_POSITION; float2 uv : TEXCOORD0; };
@@ -37,11 +37,9 @@ Shader "Hidden/WaterSim"
             {
                 float2 d = _MainTex_TexelSize.xy;
 
-                // Condition de Neumann (h_ghost = h_bord) via saturate :
-                // WrapMode.Clamp + saturate() = le pixel fantôme hors domaine
-                // est identique au pixel de bord → gradient nul → rebond pur.
-                float2 uvL = float2(max(i.uv.x - d.x, 0.0),  i.uv.y);
-                float2 uvR = float2(min(i.uv.x + d.x, 1.0),  i.uv.y);
+                // Neumann BC : gradient nul au bord → rebond
+                float2 uvL = float2(max(i.uv.x - d.x, 0.0), i.uv.y);
+                float2 uvR = float2(min(i.uv.x + d.x, 1.0), i.uv.y);
                 float2 uvD = float2(i.uv.x, max(i.uv.y - d.y, 0.0));
                 float2 uvU = float2(i.uv.x, min(i.uv.y + d.y, 1.0));
 
@@ -51,29 +49,15 @@ Shader "Hidden/WaterSim"
                 float h_D = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvD).z;
                 float h_U = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvU).z;
 
-                // La formule hyper stable des heightmaps d'eau 2D
-                // R = Ancienne hauteur, G = Rien pour le moment, Z = Hauteur Courante
-                
-                // height = center.z
-                // prev_height = center.r (stocké)
-                
-                float current_height = center.z;
+                float current_height  = center.z;
                 float previous_height = center.r;
-                
-                // Formule de propagation d'onde classique avec amortissement (_Damping contrôlé)
-                // h_new = (voisins - h_prev) * damp; 
-                // Pour que ça ne plante jamais, avec inertie intégrée :
-                
-                float height_diff = ((h_L + h_R + h_D + h_U) / 2.0) - previous_height;
-                
-                // On dissipe l'onde très lentement avec Damping (0.99)
-                float new_height = height_diff * clamp(_Damping, 0.8, 0.999);
 
-                new_height = clamp(new_height, -5.0, 5.0);
+                // Verlet : h_new = (somme voisins / 2) - h_prev, puis dissipation
+                float new_height = ((h_L + h_R + h_D + h_U) / 2.0) - previous_height;
+                new_height *= clamp(_Damping, 0.8, 0.999);
+                new_height  = clamp(new_height, -5.0, 5.0);
 
-                // On sauvegarde : 
-                // Nouvelle 'Hauteur Courante' -> Dans Z
-                // Ancienne 'Hauteur Courante' (qui devient l'ancienne) -> Dans R
+                // R = ancienne courante (devient prev), B = nouvelle courante
                 return float4(current_height, 0.0, new_height, 0.0);
             }
             ENDHLSL
@@ -136,18 +120,12 @@ Shader "Hidden/WaterSim"
 
                     if (a.isImpact == 1)
                     {
-                        // Impulsion ponctuelle courte : on injecte seulement pendant les
-                        // premières 0.06s. La wave equation propage ensuite un anneau
-                        // physique qui rebondit sur les bords (Neumann).
-                        // (l'ancien code dessinait l'anneau directement frame par frame
-                        //  → pas de rebond possible car hors physique)
-                        if (a.age < 0.06)
-                        {
-                            float sr_world = _StampRadius * max(_WaterPlaneSize.x, _WaterPlaneSize.y);
-                            float falloff  = exp(-dist_world * dist_world / (sr_world * sr_world));
-                            float burst    = 1.0 - (a.age / 0.06); // fondu rapide
-                            height += falloff * _StampStrength * 4.0 * burst;
-                        }
+                        float ring_r   = a.age * _RingExpandSpeed;
+                        float ring_w   = 0.005;
+                        float ringFall = exp(-pow(dist_world - ring_r * max(_WaterPlaneSize.x, _WaterPlaneSize.y), 2.0)
+                                             / (ring_w * ring_w * _WaterPlaneSize.x * _WaterPlaneSize.x));
+                        float timeFade = exp(-a.age * _ImpactDecay);
+                        height += ringFall * timeFade * _StampStrength * 4.0;
                     }
                     else
                     {
@@ -162,8 +140,6 @@ Shader "Hidden/WaterSim"
                 }
 
                 height = clamp(height, -5.0, 5.0);
-                
-                // On met à jour Z (Hauteur)
                 return float4(center.r, 0.0, height, 0.0);
             }
             ENDHLSL
