@@ -1,17 +1,11 @@
 Shader "Custom/S_Water"
 {
-    Properties
-    {
-        _RefractionStrength ("Refraction Strength", Range(0, 0.1)) = 0.02
-    }
-
     SubShader
     {
         Tags { "RenderType"="Transparent" "Queue"="Transparent" "RenderPipeline"="UniversalPipeline" }
-        // Pas de Blend — on écrit directement la couleur réfractée + alpha
-        Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
         Cull Off
+        Blend SrcAlpha OneMinusSrcAlpha
 
         Pass
         {
@@ -22,8 +16,6 @@ Shader "Custom/S_Water"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareOpaqueTexture.hlsl"
             #include "Modules/W_Surface.hlsl"
-
-            float _RefractionStrength;
 
             struct Attributes
             {
@@ -49,35 +41,24 @@ Shader "Custom/S_Water"
 
             half4 frag(Varyings IN) : SV_Target
             {
-                // ── Normale de surface depuis W_Surface ──────────────────────
                 float2 d = _WaterFlowMap_TexelSize.xy * 2.5;
-                float h_L = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2(-d.x, 0)).z;
-                float h_R = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2( d.x, 0)).z;
-                float h_D = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2(0, -d.y)).z;
-                float h_U = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2(0,  d.y)).z;
-                float h_C = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv).z;
+                float h_L = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2(-d.x,  0   )).z;
+                float h_R = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2( d.x,  0   )).z;
+                float h_D = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2( 0,   -d.y )).z;
+                float h_U = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2( 0,    d.y )).z;
 
-                float gx = h_R - h_L;
-                float gy = h_U - h_D;
-                float2 normalXY = float2(gx, gy); // XY de la normale de surface
+                // Normale de surface → décalage réfraction
+                float2 normalXY  = float2(h_R - h_L, h_U - h_D);
+                float2 screenUV  = IN.screenPos.xy / IN.screenPos.w;
+                float2 refractUV = screenUV + normalXY * 0.02;
 
-                // ── UV écran ─────────────────────────────────────────────────
-                float2 screenUV = IN.screenPos.xy / IN.screenPos.w;
+                half3 scene = SampleSceneColor(refractUV);
 
-                // ── Réfraction : décale les UV écran par la normale ──────────
-                float2 refractUV = screenUV + normalXY * _RefractionStrength;
-
-                half3 refractedColor = SampleSceneColor(refractUV);
-
-                // ── Alpha : visible là où il y a de la perturbation ──────────
-                float h_DL = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2(-d.x, -d.y)).z;
-                float h_DR = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2( d.x, -d.y)).z;
-                float h_UL = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2(-d.x,  d.y)).z;
-                float h_UR = SAMPLE_TEXTURE2D(_WaterFlowMap, sampler_WaterFlowMap, IN.uv + float2( d.x,  d.y)).z;
-                float blurred = (h_C * 4.0 + (h_L + h_R + h_D + h_U) * 2.0 + (h_DL + h_DR + h_UL + h_UR)) / 16.0;
-                float alpha = saturate(abs(blurred) * 4.0);
-
-                return half4(refractedColor, alpha);
+                // Alpha = magnitude de la distorsion uniquement.
+                // Pas de vague → normalXY=0 → alpha=0 → totalement transparent.
+                // Avec vague → alpha>0 → montre la scène décalée.
+                float distortion = saturate(length(normalXY) * 30.0);
+                return half4(scene, distortion);
             }
             ENDHLSL
         }
