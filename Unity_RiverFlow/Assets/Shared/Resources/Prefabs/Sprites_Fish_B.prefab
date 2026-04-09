@@ -1,0 +1,143 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &4847356113431379222
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8653719598885068355, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_Name
+      value: Sprites_Fish_B
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: -8653719598885068355, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2378828021203716549}
+  m_SourcePrefab: {fileID: 4843985084834002234, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+--- !u!4 &789742505379894392 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5310023426438015342, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1054802575468254432 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -3610147570491921930, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1093875111998416851 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5506632604027935429, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1320011497948755724 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5842536257276578330, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1633653276952159079 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6192064985284730481, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2995367838972086615 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -1525335309843516351, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &4110603895768822260 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -410240135493972766, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &4945668637357481131 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -8653719598885068355, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2378828021203716549
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4945668637357481131}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c16b7e146629574d994ece338ef7ff3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Fishes
+  moveSpeed: 2
+  directionChangeInterval: 10
+  speedVariation: 0.2
+  turnSpeed: 1
+  tailWaveAmplitude: 6
+  tailWaveFrequency: 2
+  finAnimationAmplitude: 10
+  finAnimationFrequency: 1.5
+  randomBoneNoiseScale: 0.3
+  rootBone: {fileID: 5622550436487308073}
+  bodyBone: {fileID: 1093875111998416851}
+  headBone: {fileID: 4110603895768822260}
+  finsBones:
+  - {fileID: 1320011497948755724}
+  - {fileID: 5653845042179348260}
+  - {fileID: 789742505379894392}
+  - {fileID: 1054802575468254432}
+  - {fileID: 1633653276952159079}
+  - {fileID: 2995367838972086615}
+--- !u!4 &5622550436487308073 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8268033429116936641, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5653845042179348260 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8272203564524164558, guid: e192d3d7de22c6a4d993fd3494a8d50b, type: 3}
+  m_PrefabInstance: {fileID: 4847356113431379222}
+  m_PrefabAsset: {fileID: 0}
