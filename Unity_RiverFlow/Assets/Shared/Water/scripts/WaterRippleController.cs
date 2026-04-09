@@ -3,13 +3,11 @@ using UnityEngine;
 
 /// <summary>
 /// Simule l'équation d'onde 2D (Wave Equation) via ping-pong RenderTexture.
+/// Texture : R=prev_height, G=unused, B=curr_height
 ///
 /// Chaque frame :
-///   1. Propagation de l'onde 2D (Pass 0)
-///   2. Stamp des interacteurs (injection de hauteur) (Pass 1)
-///
-/// Expose _WaterFlowMap globalement pour S_Water.shader.
-/// On y stocke au final : R = Current Height, G = Previous Height.
+///   1. Propagation Verlet × simStepsPerFrame (sub-stepping pour atteindre les bords)
+///   2. Stamp des interacteurs
 /// </summary>
 [ExecuteAlways]
 public class WaterRippleController : MonoBehaviour
@@ -40,21 +38,21 @@ public class WaterRippleController : MonoBehaviour
 
     [Header("Simulation")]
     [Tooltip("Résolution de la texture de simulation")]
-    [SerializeField] private int   resolution      = 512;
-    [Tooltip("Nombre de pas de physique par frame (vitesse de propagation × N). Augmenter pour voir le rebond.")]
+    [SerializeField] private int   resolution       = 512;
+    [Tooltip("Nombre de pas de physique par frame — augmente la vitesse de propagation")]
     [Range(1, 32)]
     [SerializeField] private int   simStepsPerFrame = 8;
-    [Tooltip("Amortissement total par frame (0.999 = vague longue, 0.97 = vague courte)")]
-    [Range(0.9f, 0.9999f)]
-    [SerializeField] private float damping         = 0.999f;
-    [Tooltip("Rayon local du stamp en espace UV [0,1]")]
-    [SerializeField] private float stampRadius     = 0.05f;
-    [Tooltip("Hauteur soulevée / abaissée")]
-    [SerializeField] private float stampStrength   = 4.0f;
-    [Tooltip("Vitesse d'expansion de l'impact dur (UV/s)")]
-    [SerializeField] private float ringExpandSpeed = 0.2f;
+    [Tooltip("Amortissement global par frame (0.999 = longue durée, 0.97 = courte)")]
+    [Range(0.9f, 0.999f)]
+    [SerializeField] private float damping          = 0.985f;
+    [Tooltip("Rayon du stamp en proportion du plan [0,1]")]
+    [SerializeField] private float stampRadius      = 0.05f;
+    [Tooltip("Hauteur injectée")]
+    [SerializeField] private float stampStrength    = 4.0f;
+    [Tooltip("Vitesse d'expansion de l'anneau (UV/s * planeSize)")]
+    [SerializeField] private float ringExpandSpeed  = 0.2f;
     [Tooltip("Taux de décroissance temporelle des impacts (1/s)")]
-    [SerializeField] private float impactDecay     = 1.0f;
+    [SerializeField] private float impactDecay      = 1.0f;
 
     // ── Singleton ────────────────────────────────────────────────────────────
     public static WaterRippleController Instance { get; private set; }
@@ -62,7 +60,7 @@ public class WaterRippleController : MonoBehaviour
     // ── État interne ─────────────────────────────────────────────────────────
     private ComputeBuffer     _buffer;
     private WaterInteractor[] _data;
-    private int               _currentCount; // nombre d'interacteurs actifs
+    private int               _currentCount;
 
     private RenderTexture _rtCurr, _rtNext, _rtSwap;
     private Material      _simMat;
@@ -72,15 +70,15 @@ public class WaterRippleController : MonoBehaviour
     private readonly Dictionary<int, ImpactEntry> _persistents = new();
 
     // ── Property IDs ─────────────────────────────────────────────────────────
-    private static readonly int ID_Damping        = Shader.PropertyToID("_Damping");
-    private static readonly int ID_SimDeltaTime   = Shader.PropertyToID("_SimDeltaTime");
-    private static readonly int ID_PlaneMin       = Shader.PropertyToID("_WaterPlaneMin");
-    private static readonly int ID_PlaneSize      = Shader.PropertyToID("_WaterPlaneSize");
-    private static readonly int ID_StampRadius    = Shader.PropertyToID("_StampRadius");
-    private static readonly int ID_StampStrength  = Shader.PropertyToID("_StampStrength");
+    private static readonly int ID_Damping         = Shader.PropertyToID("_Damping");
+    private static readonly int ID_SimDeltaTime    = Shader.PropertyToID("_SimDeltaTime");
+    private static readonly int ID_PlaneMin        = Shader.PropertyToID("_WaterPlaneMin");
+    private static readonly int ID_PlaneSize       = Shader.PropertyToID("_WaterPlaneSize");
+    private static readonly int ID_StampRadius     = Shader.PropertyToID("_StampRadius");
+    private static readonly int ID_StampStrength   = Shader.PropertyToID("_StampStrength");
     private static readonly int ID_RingExpandSpeed = Shader.PropertyToID("_RingExpandSpeed");
-    private static readonly int ID_ImpactDecay    = Shader.PropertyToID("_ImpactDecay");
-    private static readonly int ID_FlowMap        = Shader.PropertyToID("_WaterFlowMap");
+    private static readonly int ID_ImpactDecay     = Shader.PropertyToID("_ImpactDecay");
+    private static readonly int ID_FlowMap         = Shader.PropertyToID("_WaterFlowMap");
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     private void OnEnable()
@@ -97,8 +95,7 @@ public class WaterRippleController : MonoBehaviour
         var simShader = Shader.Find("Hidden/WaterSim");
         if (simShader == null)
         {
-            Debug.LogError("[WaterRippleController] Shader 'Hidden/WaterSim' introuvable. " +
-                           "Vérifier que S_WaterSim.shader est dans le projet et compilé.");
+            Debug.LogError("[WaterRippleController] Shader 'Hidden/WaterSim' introuvable.");
             return;
         }
         _simMat = new Material(simShader);
@@ -127,8 +124,6 @@ public class WaterRippleController : MonoBehaviour
     }
 
     // ── API publique ──────────────────────────────────────────────────────────
-
-    /// <summary>Impact bref : pied levé. Génère un anneau expansif.</summary>
     public void AddImpact(Vector2 worldPositionXZ)
     {
         if (_impacts.Count + _persistents.Count >= maxInteractors) return;
@@ -142,7 +137,6 @@ public class WaterRippleController : MonoBehaviour
         });
     }
 
-    /// <summary>Pied posé (persistant) : pousse doucement en continu.</summary>
     public void SetPersistent(int id, Vector2 worldPositionXZ)
     {
         _persistents[id] = new ImpactEntry
@@ -153,7 +147,6 @@ public class WaterRippleController : MonoBehaviour
         };
     }
 
-    /// <summary>Pied levé : convertit le persistant en impact bref.</summary>
     public void RemovePersistent(int id)
     {
         if (!_persistents.TryGetValue(id, out ImpactEntry e)) return;
@@ -204,43 +197,38 @@ public class WaterRippleController : MonoBehaviour
             return;
         }
 
-        // Bounds du renderer → mapping world XZ ↔ UV
         Bounds b = _renderer != null
             ? _renderer.bounds
             : new Bounds(transform.position, transform.lossyScale);
 
 #if UNITY_EDITOR
         if (Quaternion.Angle(transform.rotation, Quaternion.identity) > 1f)
-            Debug.LogWarning("[WaterRippleController] Le plan est pivoté — le mapping world→UV suppose un plan aligné sur les axes.", this);
+            Debug.LogWarning("[WaterRippleController] Le plan est pivoté.", this);
 #endif
 
-        Vector4 planeMin  = new Vector4(b.min.x,  b.min.z,  0, 0);
-        Vector4 planeSize = new Vector4(b.size.x,  b.size.z, 0, 0);
+        Vector4 planeMin  = new Vector4(b.min.x, b.min.z, 0, 0);
+        Vector4 planeSize = new Vector4(b.size.x, b.size.z, 0, 0);
 
         float dt = Application.isPlaying ? Time.deltaTime : 0.016f;
 
-        // ── Partage de données communes au shader ────────────────────────────
-        _simMat.SetVector(ID_PlaneMin,        planeMin);
-        _simMat.SetVector(ID_PlaneSize,       planeSize);
+        _simMat.SetVector(ID_PlaneMin,  planeMin);
+        _simMat.SetVector(ID_PlaneSize, planeSize);
 
-        // ── Pass 0 : Wave Equation (Propagation) — sub-stepping ─────────────
-        // La vague avance de 0.707 texel/step. Pour traverser 512px en ~1s il faut
-        // simStepsPerFrame=8 : 0.707 * 8 * 60fps / 512 ≈ 0.66 UV/s.
-        // Le damping par step est la racine N-ième du damping par frame.
-        float dampingPerStep = Mathf.Pow(damping, 1f / Mathf.Max(1, simStepsPerFrame));
-        _simMat.SetFloat(ID_Damping,      dampingPerStep);
+        // ── Pass 0 : Propagation Verlet (sub-stepping) ───────────────────────
+        // La vague avance de 0.5 texel/step. Avec simStepsPerFrame=8 et res=512 :
+        // 0.5 * 8 * 60fps / 512 ≈ 0.47 UV/s → traverse le plan en ~2s.
+        // Le damping est la racine N-ième pour garder le damping total constant.
+        float dampPerStep = Mathf.Pow(damping, 1f / Mathf.Max(1, simStepsPerFrame));
+        _simMat.SetFloat(ID_Damping,      dampPerStep);
         _simMat.SetFloat(ID_SimDeltaTime, dt);
 
         for (int step = 0; step < simStepsPerFrame; step++)
         {
             Graphics.Blit(_rtCurr, _rtNext, _simMat, 0);
-            // Swap curr ↔ next pour la prochaine itération
             (_rtCurr, _rtNext) = (_rtNext, _rtCurr);
         }
 
         // ── Pass 1 : Stamp des interacteurs ─────────────────────────────────
-        // Après la boucle de sub-steps, _rtCurr contient le résultat de propagation.
-        // On stamp dessus → résultat dans _rtNext.
         _simMat.SetBuffer("_Interactors",     _buffer);
         _simMat.SetInt   ("_InteractorCount", _currentCount);
         _simMat.SetFloat (ID_StampRadius,     stampRadius);
@@ -248,15 +236,12 @@ public class WaterRippleController : MonoBehaviour
         _simMat.SetFloat (ID_SimDeltaTime,    dt);
         _simMat.SetFloat (ID_RingExpandSpeed, ringExpandSpeed);
         _simMat.SetFloat (ID_ImpactDecay,     impactDecay);
-        Graphics.Blit(_rtCurr, _rtNext, _simMat, 1);
+        Graphics.Blit(_rtCurr, _rtSwap, _simMat, 1);
 
-        // ── Rotation finale ───────────────────────────────────────────────────
-        // _rtNext = résultat final (après stamp)
-        // _rtCurr = libre pour la prochaine frame
-        (_rtCurr, _rtNext) = (_rtNext, _rtCurr);
+        // Rotation : swap devient le nouvel état courant
+        (_rtCurr, _rtSwap) = (_rtSwap, _rtCurr);
 
-        // ── Expose la flow map au shader de rendu ────────────────────────────
-        // _rtCurr contient l'état final après propagation + stamp
+        // ── Expose ──────────────────────────────────────────────────────────
         Shader.SetGlobalTexture(ID_FlowMap,  _rtCurr);
         Shader.SetGlobalVector (ID_PlaneMin,  planeMin);
         Shader.SetGlobalVector (ID_PlaneSize, planeSize);
