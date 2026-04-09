@@ -5,16 +5,16 @@
       "path": "."
     },
     {
+      "name": "Unity_Script",
+      "path": "Unity_RiverFlow"
+    },
+    {
       "name": "App",
       "path": "Apps"
     },
     {
       "name": "Dist",
       "path": "Dist"
-    },
-    {
-      "name": "Unity_Script",
-      "path": ""
     }
   ],
   "settings": {
@@ -35,7 +35,14 @@
       "**/.DS_Store": true,
       "**/Thumbs.db": true,
       "**/*.blend1": true,
-      "**/*.blend2": true
+      "**/*.blend2": true,
+      "Library": true,
+      ".vscode": true,
+      "Packages": true,
+      "Assets/Scenes": true,
+      "Dist": true,
+      "Apps": true,
+      "Unity_RiverFlow": true,
     }
   },
   "tasks": {
