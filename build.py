@@ -4,6 +4,7 @@ Build RiverFlow binaries for Windows and/or Linux distributions.
 Usage: uv run build.py [client-ndi|server-mocap|unity|client-mocap|all]
 """
 
+import platform
 import subprocess
 import shutil
 import sys
@@ -112,6 +113,25 @@ TARGETS = {
 }
 
 
+LAUNCH = {
+    "client-ndi": {
+        "Linux":   ROOT / "Dist/linux/client/run.sh",
+        "Windows": ROOT / "Dist/windows/client/run-client-ndi.bat",
+    },
+}
+
+
+def launch(target: str):
+    os_name = platform.system()  # "Linux" ou "Windows"
+    launchers = LAUNCH.get(target, {})
+    launcher = launchers.get(os_name)
+    if launcher and launcher.exists():
+        print(f"\n→ Lancement : {launcher}")
+        subprocess.Popen([str(launcher)], start_new_session=True)
+    elif launcher:
+        print(f"\n⚠ Launcher introuvable : {launcher}")
+
+
 def main():
     target = sys.argv[1].lower() if len(sys.argv) > 1 else "all"
 
@@ -130,6 +150,10 @@ def main():
     for name, success in results.items():
         print(f"  {'✓' if success else '✗'} {name}")
     print("=" * 50)
+
+    if ok and target != "all":
+        launch(target)
+
     sys.exit(0 if ok else 1)
 
 
