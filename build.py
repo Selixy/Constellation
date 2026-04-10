@@ -1,164 +1,137 @@
 #!/usr/bin/env python3
 """
 Build RiverFlow binaries for Windows and/or Linux distributions.
-Usage: uv run build.py [windows|linux|all]
+Usage: uv run build.py [client-ndi|server-mocap|unity|client-mocap|all]
 """
 
 import subprocess
 import shutil
 import sys
 from pathlib import Path
-from typing import Literal
 
-def run_command(cmd: list[str], cwd: Path | None = None, check: bool = True) -> int:
-    """Run a shell command and return exit code."""
+
+def run(cmd: list[str], cwd: Path | None = None) -> bool:
     print(f"→ {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=cwd, check=check)
-    return result.returncode
+    return subprocess.run(cmd, cwd=cwd).returncode == 0
 
-def build_windows() -> bool:
-    """Build Windows binaries (cross-compile from Linux or native on Windows)."""
-    print("\n" + "=" * 60)
-    print("Building Windows binaries...")
-    print("=" * 60)
-    
-    root = Path(__file__).parent
-    apps_dir = root / "Apps"
-    dist_client = root / "Dist" / "windows" / "client"
-    dist_serveur = root / "Dist" / "windows" / "serveur"
-    
-    dist_client.mkdir(parents=True, exist_ok=True)
-    dist_serveur.mkdir(parents=True, exist_ok=True)
-    
-    # Build server
-    print("\n[1/3] Building server (Windows)...")
-    if run_command(
-        ["cargo", "build", "-p", "riverflow-server", "--release", "--target", "x86_64-pc-windows-gnu"],
-        cwd=apps_dir,
-        check=False
-    ) != 0:
-        print("⚠️  Server build failed (may be expected on non-Windows)")
-        return False
-    
-    # Build client
-    print("\n[2/3] Building client (Windows)...")
-    if run_command(
-        ["cargo", "build", "-p", "riverflow-client-ndi", "--release", "--target", "x86_64-pc-windows-gnu"],
-        cwd=apps_dir,
-        check=False
-    ) != 0:
-        print("⚠️  Client build failed (may be expected on non-Windows)")
-        return False
-    
-    # Copy to Dist
-    print("\n[3/3] Copying to Dist/windows/...")
-    target_dir = apps_dir / "target" / "x86_64-pc-windows-gnu" / "release"
-    
-    server_src = target_dir / "riverflow-server.exe"
-    client_src = target_dir / "riverflow-client-ndi.exe"
-    client_yaml = apps_dir / "target" / "x86_64-pc-windows-gnu" / "release" / "riverflow-client-ndi.yaml"
-    
-    if server_src.exists():
-        shutil.copy2(server_src, dist_serveur / "riverflow-server.exe")
-        print(f"  ✓ Copied server to {dist_serveur / 'riverflow-server.exe'}")
-    
-    if client_src.exists():
-        shutil.copy2(client_src, dist_client / "riverflow-client-ndi.exe")
-        print(f"  ✓ Copied client to {dist_client / 'riverflow-client-ndi.exe'}")
-    
-    if client_yaml.exists():
-        shutil.copy2(client_yaml, dist_client / "riverflow-client-ndi.yaml")
-        print(f"  ✓ Copied YAML to {dist_client / 'riverflow-client-ndi.yaml'}")
-    
-    print("\n✅ Windows build completed!")
+
+ROOT = Path(__file__).parent
+APPS = ROOT / "Apps"
+NDI_SDK = APPS / "ndi-sdk"
+
+
+def build_client_ndi() -> bool:
+    print("\n=== Build: Client NDI (Linux + Windows) ===")
+
+    dist_linux = ROOT / "Dist/linux/client"
+    dist_win = ROOT / "Dist/windows/client"
+    dist_linux.mkdir(parents=True, exist_ok=True)
+    dist_win.mkdir(parents=True, exist_ok=True)
+
+    ok = True
+
+    # Linux (avec NDI — link sur stub, runtime charge le vrai .so via LD_LIBRARY_PATH)
+    print("\n[Linux]")
+    env_ndi = {
+        **__import__("os").environ,
+        "NDI_SDK_DIR": str(NDI_SDK),
+        "RUSTFLAGS": "-C linker=gcc",
+    }
+    result = subprocess.run(
+        ["cargo", "build", "-p", "riverflow-client-ndi", "--release", "--features", "ndi"],
+        cwd=APPS, env=env_ndi
+    )
+    if result.returncode == 0:
+        src = APPS / "target/release/riverflow-client-ndi"
+        shutil.copy2(src, dist_linux / "riverflow-client-ndi")
+        (dist_linux / "riverflow-client-ndi").chmod(0o755)
+        yaml_src = APPS / "target/release/riverflow-client-ndi.yaml"
+        if yaml_src.exists():
+            shutil.copy2(yaml_src, dist_linux / "riverflow-client-ndi.yaml")
+        # Copier le vrai .so NDI + symlinks dans Dist si pas déjà présents
+        real_so = dist_linux / "libndi.so.6.3.1"
+        if not real_so.exists():
+            print("  ⚠ libndi.so.6.3.1 absent de Dist/linux/client — à copier manuellement depuis le NDI runtime")
+        # Écrire run.sh avec LD_LIBRARY_PATH
+        run_sh = dist_linux / "run.sh"
+        run_sh.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
+            'export LD_LIBRARY_PATH="$SELF_DIR:${LD_LIBRARY_PATH:-}"\n'
+            'exec "$SELF_DIR/riverflow-client-ndi" "$@"\n'
+        )
+        run_sh.chmod(0o755)
+        print(f"  ✓ {dist_linux}/riverflow-client-ndi")
+    else:
+        print("  ✗ Build Linux client-ndi échoué")
+        ok = False
+
+    # Windows (cross-compile sans NDI — grafton-ndi ne supporte pas le cross-compile Linux→Windows)
+    # Pour un build Windows avec NDI, builder nativement sur Windows avec build_dist_windows.ps1
+    print("\n[Windows] (sans NDI — NO SIGNAL mode)")
+    if run(["cargo", "build", "-p", "riverflow-client-ndi", "--release",
+            "--target", "x86_64-pc-windows-gnu"], cwd=APPS):
+        src = APPS / "target/x86_64-pc-windows-gnu/release/riverflow-client-ndi.exe"
+        shutil.copy2(src, dist_win / "riverflow-client-ndi.exe")
+        yaml_src = APPS / "target/release/riverflow-client-ndi.yaml"
+        if yaml_src.exists():
+            shutil.copy2(yaml_src, dist_win / "riverflow-client-ndi.yaml")
+        print(f"  ✓ {dist_win}/riverflow-client-ndi.exe (NO SIGNAL — NDI nécessite un build natif Windows)")
+    else:
+        print("  ✗ Build Windows client-ndi échoué")
+        ok = False
+
+    return ok
+
+
+def build_server_mocap() -> bool:
+    print("\n=== Build: Server Mocap (non encore implémenté) ===")
+    print("  ⚠ Projet Python — packaging (PyInstaller ou autre) à définir")
     return True
 
-def build_linux() -> bool:
-    """Build Linux binaries."""
-    print("\n" + "=" * 60)
-    print("Building Linux binaries...")
-    print("=" * 60)
-    
-    root = Path(__file__).parent
-    apps_dir = root / "Apps"
-    dist_client = root / "Dist" / "linux" / "client"
-    dist_serveur = root / "Dist" / "linux" / "serveur"
-    
-    dist_client.mkdir(parents=True, exist_ok=True)
-    dist_serveur.mkdir(parents=True, exist_ok=True)
-    
-    # Build server
-    print("\n[1/2] Building server (Linux)...")
-    if run_command(
-        ["cargo", "build", "-p", "riverflow-server", "--release"],
-        cwd=apps_dir,
-        check=False
-    ) != 0:
-        print("❌ Server build failed")
-        return False
-    
-    # Build client
-    print("\n[2/2] Building client (Linux)...")
-    if run_command(
-        ["cargo", "build", "-p", "riverflow-client-ndi", "--release"],
-        cwd=apps_dir,
-        check=False
-    ) != 0:
-        print("❌ Client build failed")
-        return False
-    
-    # Copy to Dist
-    print("\n[3/3] Copying to Dist/linux/...")
-    target_dir = apps_dir / "target" / "release"
-    
-    server_src = target_dir / "riverflow-server"
-    client_src = target_dir / "riverflow-client-ndi"
-    client_yaml = target_dir / "riverflow-client-ndi.yaml"
-    
-    if server_src.exists():
-        shutil.copy2(server_src, dist_serveur / "riverflow-server")
-        (dist_serveur / "riverflow-server").chmod(0o755)
-        print(f"  ✓ Copied server to {dist_serveur / 'riverflow-server'}")
-    
-    if client_src.exists():
-        shutil.copy2(client_src, dist_client / "riverflow-client-ndi")
-        (dist_client / "riverflow-client-ndi").chmod(0o755)
-        print(f"  ✓ Copied client to {dist_client / 'riverflow-client-ndi'}")
-    
-    if client_yaml.exists():
-        shutil.copy2(client_yaml, dist_client / "riverflow-client-ndi.yaml")
-        print(f"  ✓ Copied YAML to {dist_client / 'riverflow-client-ndi.yaml'}")
-    
-    print("\n✅ Linux build completed!")
+
+def build_unity() -> bool:
+    print("\n=== Build: Projet Unity (non encore implémenté) ===")
+    print("  ⚠ Build Unity à configurer (Unity CLI headless)")
     return True
+
+
+def build_client_mocap() -> bool:
+    print("\n=== Build: Client Mocap (non encore implémenté) ===")
+    print("  ⚠ Client Mocap à créer")
+    return True
+
+
+TARGETS = {
+    "client-ndi":    build_client_ndi,
+    "server-mocap":  build_server_mocap,
+    "unity":         build_unity,
+    "client-mocap":  build_client_mocap,
+    "all":           None,
+}
+
 
 def main():
-    """Main entry point."""
     target = sys.argv[1].lower() if len(sys.argv) > 1 else "all"
-    
-    if target not in ("windows", "linux", "all"):
-        print(f"Invalid target: {target}")
-        print("Usage: uv run build.py [windows|linux|all]")
+
+    if target not in TARGETS:
+        print(f"Target inconnu : {target}")
+        print(f"Usage: uv run build.py [{' | '.join(TARGETS)}]")
         sys.exit(1)
-    
-    success = True
-    
-    if target in ("windows", "all"):
-        if not build_windows():
-            success = False
-    
-    if target in ("linux", "all"):
-        if not build_linux():
-            success = False
-    
-    print("\n" + "=" * 60)
-    if success:
-        print("✅ All builds completed successfully!")
+
+    if target == "all":
+        results = {name: fn() for name, fn in TARGETS.items() if fn is not None}
     else:
-        print("⚠️  Some builds encountered issues. Check output above.")
-    print("=" * 60)
-    
-    sys.exit(0 if success else 1)
+        results = {target: TARGETS[target]()}
+
+    print("\n" + "=" * 50)
+    ok = all(results.values())
+    for name, success in results.items():
+        print(f"  {'✓' if success else '✗'} {name}")
+    print("=" * 50)
+    sys.exit(0 if ok else 1)
+
 
 if __name__ == "__main__":
     main()
