@@ -147,8 +147,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 401770333}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalRotation: {x: 0.5, y: -0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: 0, y: 30, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -166,7 +166,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35a059ecc22f7c51f9171dc2d7e4c449, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NdiCameraSender
-  streamName: camera_3
+  streamId: camera_3
+  captureWidth: 960
+  captureHeight: 540
+  jpegQuality: 75
+  targetFps: 25
 --- !u!114 &401770336
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179,11 +183,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2d98e5bfcdff4847ad69efa861a8e7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Klak.Ndi.Runtime::Klak.Ndi.NdiSender
+  _attachedCamera: {fileID: 0}
   _ndiName: NDI Sender
+  _ndiNameRuntime: NDI Sender
   _keepAlpha: 0
   _captureMethod: 1
+  _captureMethodRuntime: 1
   _sourceCamera: {fileID: 0}
+  _sourceCameraRuntime: {fileID: 0}
   _sourceTexture: {fileID: 0}
+  <metadata>k__BackingField: 
   _resources: {fileID: 11400000, guid: 69304b86950074db7ba8caba75214004, type: 2}
 --- !u!114 &401770337
 MonoBehaviour:
@@ -392,7 +401,7 @@ Transform:
   m_GameObject: {fileID: 1234567890}
   serializedVersion: 2
   m_LocalRotation: {x: 0.5, y: -0.5, z: 0.5, w: 0.5}
-  m_LocalPosition: {x: 0, y: 10, z: 0}
+  m_LocalPosition: {x: 2.83, y: 24.6, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -521,8 +530,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1393400455}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalRotation: {x: 0.5, y: -0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: 0, y: 30, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -540,7 +549,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35a059ecc22f7c51f9171dc2d7e4c449, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NdiCameraSender
-  streamName: camera_2
+  streamId: camera_2
+  captureWidth: 960
+  captureHeight: 540
+  jpegQuality: 75
+  targetFps: 25
 --- !u!114 &1393400458
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -553,11 +566,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2d98e5bfcdff4847ad69efa861a8e7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Klak.Ndi.Runtime::Klak.Ndi.NdiSender
+  _attachedCamera: {fileID: 0}
   _ndiName: NDI Sender
+  _ndiNameRuntime: NDI Sender
   _keepAlpha: 0
   _captureMethod: 1
+  _captureMethodRuntime: 1
   _sourceCamera: {fileID: 0}
+  _sourceCameraRuntime: {fileID: 0}
   _sourceTexture: {fileID: 0}
+  <metadata>k__BackingField: 
   _resources: {fileID: 11400000, guid: 69304b86950074db7ba8caba75214004, type: 2}
 --- !u!114 &1393400459
 MonoBehaviour:
@@ -748,8 +766,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1812924291}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalRotation: {x: 0.5, y: -0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: 0, y: 30, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -862,7 +880,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35a059ecc22f7c51f9171dc2d7e4c449, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NdiCameraSender
-  streamName: camera_1
+  streamId: camera_1
+  captureWidth: 960
+  captureHeight: 540
+  jpegQuality: 75
+  targetFps: 25
 --- !u!114 &1812924297
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -875,11 +897,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2d98e5bfcdff4847ad69efa861a8e7f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Klak.Ndi.Runtime::Klak.Ndi.NdiSender
+  _attachedCamera: {fileID: 0}
   _ndiName: NDI Sender
+  _ndiNameRuntime: NDI Sender
   _keepAlpha: 0
   _captureMethod: 1
+  _captureMethodRuntime: 1
   _sourceCamera: {fileID: 0}
+  _sourceCameraRuntime: {fileID: 0}
   _sourceTexture: {fileID: 0}
+  <metadata>k__BackingField: 
   _resources: {fileID: 11400000, guid: 69304b86950074db7ba8caba75214004, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
