@@ -2,16 +2,14 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-const DEFAULT_CONFIG: &str = r#"streams:
+const DEFAULT_CONFIG: &str = r#"port: 7000
+streams:
   - id: camera_1
     ip: 192.168.1.100
-    port: 7001
   - id: camera_2
     ip: 192.168.1.100
-    port: 7002
   - id: camera_3
     ip: 192.168.1.100
-    port: 7003
 "#;
 
 fn main() {
