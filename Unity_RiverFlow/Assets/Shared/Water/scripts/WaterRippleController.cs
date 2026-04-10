@@ -46,14 +46,14 @@ public class WaterRippleController : MonoBehaviour
     [Range(1, 32)]
     [SerializeField] private int   simStepsPerFrame = 8;
     [Tooltip("Amortissement global par frame (0.999 = longue durée, 0.97 = courte)")]
-    [Range(0.9f, 0.999f)]
-    [SerializeField] private float damping          = 0.985f;
+    [Range(0.8f, 0.999f)]
+    [SerializeField] private float damping          = 0.965f;
     [Tooltip("Rayon du stamp en proportion du plan [0,1]")]
-    [SerializeField] private float stampRadius      = 0.05f;
+    [SerializeField] private float stampRadius      = 0.02f;
     [Tooltip("Hauteur injectée")]
     [SerializeField] private float stampStrength    = 4.0f;
     [Tooltip("Vitesse d'expansion de l'anneau (UV/s * planeSize)")]
-    [SerializeField] private float ringExpandSpeed  = 0.2f;
+    [SerializeField] private float ringExpandSpeed  = 0.08f;
     [Tooltip("Taux de décroissance temporelle des impacts (1/s)")]
     [SerializeField] private float impactDecay      = 1.0f;
 
