@@ -2,6 +2,7 @@ Shader "Custom/S_Water"
 {
     Properties
     {
+        [Toggle] _EnableSpots ("Activer les pois d'eau", Float) = 0.0
         _BaseColor ("Couleur de Base (Rivière)", Color) = (0.10, 0.35, 0.20, 1.0)
         _SpotColor ("Couleur des Pois d'Eau", Color) = (0.25, 0.55, 0.40, 1.0)
         _Scale ("Densité des Pois / Cellules", Range(1, 100)) = 30.0
@@ -26,6 +27,7 @@ Shader "Custom/S_Water"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             
             // Déclaration des variables AVANT l'include !
+            float _EnableSpots;
             float4 _BaseColor;
             float4 _SpotColor;
             float _Scale;

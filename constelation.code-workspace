@@ -55,80 +55,35 @@
     },
     "tasks": [
       {
-        "label": "🔨 Build: Windows (release → Dist/windows)",
+        "label": "Build: Server Mocap",
         "type": "shell",
-        "command": "uv",
-        "args": [
-          "run",
-          "build.py",
-          "windows"
-        ],
-        "group": {
-          "kind": "build",
-          "isDefault": false
-        },
-        "presentation": {
-          "reveal": "always",
-          "panel": "shared",
-          "echo": true
-        },
+        "command": "uv run build.py server-mocap",
+        "group": { "kind": "build", "isDefault": false },
+        "presentation": { "reveal": "always", "panel": "shared" },
         "problemMatcher": []
       },
       {
-        "label": "🔨 Build: Linux (release → Dist/linux)",
+        "label": "Build: Client Mocap",
         "type": "shell",
-        "command": "uv",
-        "args": [
-          "run",
-          "build.py",
-          "linux"
-        ],
-        "group": {
-          "kind": "build",
-          "isDefault": false
-        },
-        "presentation": {
-          "reveal": "always",
-          "panel": "shared",
-          "echo": true
-        },
+        "command": "echo 'Client Mocap: non encore implemente'",
+        "group": { "kind": "build", "isDefault": false },
+        "presentation": { "reveal": "always", "panel": "shared" },
         "problemMatcher": []
       },
       {
-        "label": "🔨 Build: All (Windows + Linux)",
+        "label": "Build: Projet Unity",
         "type": "shell",
-        "command": "uv",
-        "args": [
-          "run",
-          "build.py",
-          "all"
-        ],
-        "group": {
-          "kind": "build",
-          "isDefault": true
-        },
-        "presentation": {
-          "reveal": "always",
-          "panel": "shared",
-          "echo": true
-        },
+        "command": "uv run build.py unity",
+        "group": { "kind": "build", "isDefault": false },
+        "presentation": { "reveal": "always", "panel": "shared" },
         "problemMatcher": []
       },
       {
-        "label": "📦 Setup: Install uv (if needed)",
+        "label": "Build: Client NDI",
         "type": "shell",
-        "command": "python3",
-        "args": [
-          "-m",
-          "pip",
-          "install",
-          "uv"
-        ],
-        "presentation": {
-          "reveal": "always",
-          "panel": "shared",
-          "echo": true
-        },
+        "command": "uv run build.py client-ndi",
+        "group": { "kind": "build", "isDefault": true },
+        "presentation": { "reveal": "always", "panel": "shared" },
         "problemMatcher": []
       }
     ]

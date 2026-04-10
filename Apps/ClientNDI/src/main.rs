@@ -4,12 +4,13 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::thread;
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "ndi")]
 use grafton_ndi::{
-    Finder, FinderOptions, NDI, Receiver, ReceiverBandwidth, ReceiverColorFormat, ReceiverOptions,
+    Finder, FinderOptions, Receiver, ReceiverBandwidth, ReceiverColorFormat, ReceiverOptions,
 };
 
 #[cfg(feature = "ndi")]
@@ -23,11 +24,9 @@ const DEFAULT_CONFIG: &str = r#"streams:
   - id: camera_1
     ip: 127.0.0.1
   - id: camera_2
-    ip: 127.0.0.2
+    ip: 127.0.0.1
   - id: camera_3
-    ip: 127.0.0.3
-  - id: camera_4
-    ip: 127.0.0.4
+    ip: 127.0.0.1
 "#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,9 +55,19 @@ fn run() -> Result<(), String> {
         return Err("Le fichier YAML ne contient aucune paire id/ip dans streams".to_string());
     }
 
+    let shutdown = Arc::new(AtomicBool::new(false));
+
+    {
+        let shutdown = Arc::clone(&shutdown);
+        let _ = ctrlc::set_handler(move || {
+            shutdown.store(true, Ordering::Relaxed);
+        });
+    }
+
     let mut handles = Vec::with_capacity(config.streams.len());
     for pair in config.streams {
-        handles.push(thread::spawn(move || run_stream_window(pair)));
+        let shutdown = Arc::clone(&shutdown);
+        handles.push(thread::spawn(move || run_stream_window(pair, shutdown)));
     }
 
     for handle in handles {
@@ -104,7 +113,10 @@ fn load_config(path: &Path) -> Result<ClientConfig, String> {
         .map_err(|e| format!("YAML invalide dans '{}': {e}", path.display()))
 }
 
-fn run_stream_window(pair: StreamPair) -> Result<(), String> {
+fn run_stream_window(pair: StreamPair, shutdown: Arc<AtomicBool>) -> Result<(), String> {
+    #[cfg(feature = "ndi")]
+    let ndi = grafton_ndi::NDI::new().map_err(|e| format!("NDI init failed pour {}: {e}", pair.id))?;
+
     let mut window = Window::new(
         &format!("{} [{}] - NO SIGNAL", pair.id, pair.ip),
         960,
@@ -122,9 +134,12 @@ fn run_stream_window(pair: StreamPair) -> Result<(), String> {
     let mut last_connect_attempt = Instant::now() - Duration::from_secs(10);
     let mut frame_buffer: Vec<u32> = Vec::new();
 
-    while window.is_open() {
+    while window.is_open() && !shutdown.load(Ordering::Relaxed) {
         if receiver.is_none() && last_connect_attempt.elapsed() >= Duration::from_secs(2) {
-            receiver = try_connect_receiver(&pair).ok();
+            #[cfg(feature = "ndi")]
+            { receiver = try_connect_receiver(&pair, &ndi).ok(); }
+            #[cfg(not(feature = "ndi"))]
+            { receiver = try_connect_receiver(&pair).ok(); }
             last_connect_attempt = Instant::now();
         }
 
@@ -178,27 +193,42 @@ fn run_stream_window(pair: StreamPair) -> Result<(), String> {
             .map_err(|e| format!("Erreur update fenetre {}: {e}", pair.id))?;
     }
 
+    shutdown.store(true, Ordering::Relaxed);
     Ok(())
 }
 
 #[cfg(feature = "ndi")]
-fn try_connect_receiver(pair: &StreamPair) -> Result<NdiReceiver, String> {
-    let ndi = NDI::new().map_err(|e| format!("NDI init failed: {e}"))?;
+fn try_connect_receiver(pair: &StreamPair, ndi: &grafton_ndi::NDI) -> Result<NdiReceiver, String> {
     let finder_options = FinderOptions::builder()
         .show_local_sources(true)
         .extra_ips(pair.ip.as_str())
         .build();
-    let finder = Finder::new(&ndi, &finder_options).map_err(|e| format!("Finder failed: {e}"))?;
+    let finder = Finder::new(ndi, &finder_options).map_err(|e| format!("Finder failed: {e}"))?;
 
     let _ = finder.wait_for_sources(Duration::from_millis(800));
     let sources = finder
         .sources(Duration::from_millis(200))
         .map_err(|e| format!("Source scan failed: {e}"))?;
 
+    // Filtre par IP d'abord, puis par id (nom du flux NDI).
+    // Le nom NDI est au format "MACHINE (id)" — on cherche l'id dans le nom.
     let source = sources
         .into_iter()
-        .find(|s| s.matches_host(&pair.ip))
-        .ok_or_else(|| format!("Aucune source NDI trouvee pour {} ({})", pair.id, pair.ip))?;
+        .filter(|s| s.matches_host(&pair.ip))
+        .find(|s| s.name.to_lowercase().contains(&pair.id.to_lowercase()))
+        .or_else(|| {
+            // Fallback : si aucun ne matche le nom, on prend le premier qui matche l'IP
+            // (comportement legacy pour configs sans id précis)
+            eprintln!(
+                "Aucune source NDI avec id '{}' sur {}, tentative sur toutes les sources de cette IP",
+                pair.id, pair.ip
+            );
+            None
+        })
+        .ok_or_else(|| format!(
+            "Aucune source NDI '{}' trouvee sur {} — sources disponibles filtrées par IP",
+            pair.id, pair.ip
+        ))?;
 
     let options = ReceiverOptions::builder(source)
         .color(ReceiverColorFormat::BGRX_BGRA)
@@ -206,7 +236,7 @@ fn try_connect_receiver(pair: &StreamPair) -> Result<NdiReceiver, String> {
         .name(format!("RiverFlow ClientNDI {}", pair.id))
         .build();
 
-    Receiver::new(&ndi, &options).map_err(|e| format!("Receiver create failed: {e}"))
+    Receiver::new(ndi, &options).map_err(|e| format!("Receiver create failed: {e}"))
 }
 
 #[cfg(not(feature = "ndi"))]
