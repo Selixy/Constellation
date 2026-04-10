@@ -101,14 +101,14 @@ half4 ComputeWaterSurface(float2 uv)
     // L'eau de base
     float baseAlpha = clamp(_AlphaMin + simAlpha, _AlphaMin, _AlphaMax); // Borne alpha avec sliders
     
-    // Mélange couleur (eau de base VS pois opaque)
-    half3 finalColor = lerp(_BaseColor.rgb, _SpotColor.rgb, spots);
+    // Mélange couleur (eau de base VS pois opaque), avec activation booléenne
+    half3 finalColor = lerp(_BaseColor.rgb, _SpotColor.rgb, spots * _EnableSpots);
     
     // Ajout du Bump directement connecté à la courbure de ta simulation (pour que ce soit clean) !
     finalColor += finalColor * fakeBump * 5.0;
 
-    // Alpha Final: On prend l'alpha de base MAIS on ajoute les pois qui vont jusqu'à 1 !
-    float finalAlpha = max(baseAlpha, spots);
+    // Alpha Final: On prend l'alpha de base MAIS on ajoute les pois qui vont jusqu'à 1 (si activés) !
+    float finalAlpha = max(baseAlpha, spots * _EnableSpots);
 
     return half4(finalColor, finalAlpha);
 }
