@@ -31,16 +31,11 @@ def build_client_ndi() -> bool:
 
     ok = True
 
-    # Linux (avec NDI — link sur stub, runtime charge le vrai .so via LD_LIBRARY_PATH)
+    # Linux (sans NDI — fenêtres NO SIGNAL, pas de dépendance libndi)
     print("\n[Linux]")
-    env_ndi = {
-        **__import__("os").environ,
-        "NDI_SDK_DIR": str(NDI_SDK),
-        "RUSTFLAGS": "-C linker=gcc",
-    }
     result = subprocess.run(
-        ["cargo", "build", "-p", "riverflow-client-ndi", "--release", "--features", "ndi"],
-        cwd=APPS, env=env_ndi
+        ["cargo", "build", "-p", "riverflow-client-ndi", "--release"],
+        cwd=APPS
     )
     if result.returncode == 0:
         src = APPS / "target/release/riverflow-client-ndi"
