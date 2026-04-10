@@ -10,11 +10,5 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = []
 
-
-[tool.uv.workspace]
-members = [
-    "Apps/Server",
-]
-[tool.setuptools]
-packages = []
-py-modules = []
+[tool.uv]
+python-version = "3.9"
