@@ -11,14 +11,20 @@ public class TadpoleMovement : MonoBehaviour
     public float maxTurnInterval = 4f;
     public float maxTurnAngle = 25f;
 
+    [Header("Lifetime")]
+    public float lifeTime = 60f; // 👈 3 minutes
+
     private Vector3 moveDirection;
     private float nextTurnTime;
+    private float spawnTime;
 
     void Start()
     {
         moveDirection = transform.forward;
         moveDirection.y = 0f;
         moveDirection.Normalize();
+
+        spawnTime = Time.time; // 👈 start timer
 
         ScheduleNextTurn();
     }
@@ -45,7 +51,11 @@ public class TadpoleMovement : MonoBehaviour
             ScheduleNextTurn();
         }
 
-        CheckBounds();
+        // 💀 mort après 3 minutes
+        if (Time.time >= spawnTime + lifeTime)
+        {
+            Destroy(gameObject);
+        }
     }
 
     void DoRandomTurn()
@@ -59,15 +69,5 @@ public class TadpoleMovement : MonoBehaviour
     void ScheduleNextTurn()
     {
         nextTurnTime = Time.time + Random.Range(minTurnInterval, maxTurnInterval);
-    }
-
-    void CheckBounds()
-    {
-        Vector3 pos = transform.position;
-
-        if (pos.x > 20f || pos.x < -20f || pos.z > 40f || pos.z < -40f)
-        {
-            Destroy(gameObject); // 💀 mort hors zone
-        }
     }
 }
