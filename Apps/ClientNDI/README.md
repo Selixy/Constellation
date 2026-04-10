@@ -1,115 +1,47 @@
-# ClientNDI
+# RiverFlow Client
 
-Programme client pour recevoir les flux NDI emis par Unity.
+Reçoit les flux vidéo UDP+JPEG émis par Unity et les affiche dans des fenêtres.
 
-## YAML de configuration
+## Configuration YAML
 
-Le client lit un fichier YAML place a cote de l'executable:
-
-- `<nom_executable>.yaml` (prioritaire)
-- sinon `riverflow-client-ndi.yaml`
-
-Exemple:
+Placé à côté de l'exécutable (`<nom>.yaml` ou `riverflow-client-ndi.yaml`) :
 
 ```yaml
+port: 7000
 streams:
-	- id: camera_1
-		ip: 127.0.0.1
-	- id: camera_2
-		ip: 127.0.0.2
-	- id: camera_3
-		ip: 127.0.0.3
-	- id: camera_4
-		ip: 127.0.0.4
+  - id: camera_1
+    ip: 192.168.1.100
+  - id: camera_2
+    ip: 192.168.1.100
+  - id: camera_3
+    ip: 192.168.1.100
 ```
 
-Chaque paire `id` + `ip` cree une fenetre.
+- `port` : port UDP unique écouté par le client (doit correspondre à `RiverFlowNetwork.targetPort` dans Unity)
+- `id` : identifiant du flux, doit correspondre à `NdiCameraSender.streamId` dans Unity
+- `ip` : IP de la machine Unity (informatif, affiché dans le titre de fenêtre)
 
-## Comportement au lancement
-
-1. Le client ouvre une fenetre par paire `id/ip` presente dans le YAML.
-2. Chaque fenetre tente de se connecter a une source NDI correspondant a l'IP.
-3. Si aucun flux n'est recu, la fenetre affiche `NO SIGNAL`.
-4. Quand un flux est recu, l'image remplit toute la fenetre.
-: Le ratio est preserve, l'image est recadree (crop) si necessaire, sans deformation.
-
-## Build et execution
-
-Build standard (sans SDK NDI local):
+## Build
 
 ```bash
-cargo build -p riverflow-client-ndi
+# Linux
+cargo build -p riverflow-client-ndi --release
+
+# Via build.py (Linux + Windows)
+uv run build.py client-ndi
 ```
 
-Dans ce mode, le client ouvre bien les fenetres et affiche `NO SIGNAL`.
+## Protocole UDP
 
-Build Windows vers Dist:
+Header variable par paquet (little-endian) :
 
-```powershell
-cd Apps
-.\build_dist_windows.ps1
+```
+[id_len : u8]         longueur de l'identifiant
+[id     : N bytes]    identifiant du stream (ex: "camera_1")
+[frame_id  : u32]     compteur de frame par stream
+[frag_idx  : u16]     index du fragment (0-based)
+[frag_count: u16]     nombre total de fragments
+[payload   : ...]     octets JPEG
 ```
 
-Avec NDI active:
-
-```powershell
-cd Apps
-.\build_dist_windows.ps1 -EnableNdi -NdiDllPath "C:\Program Files\NDI\NDI 6 Runtime\v6\Processing.NDI.Lib.x64.dll"
-```
-
-Le script place les sorties dans:
-
-- `Dist/windows/client`
-- `Dist/windows/serveur`
-
-Packaging Windows NDI depuis Linux (apres cross-build):
-
-```bash
-cd Apps
-./package_dist_windows_ndi.sh /chemin/vers/Processing.NDI.Lib.x64.dll
-```
-
-Ce script ajoute dans `Dist/windows/client`:
-
-- `Processing.NDI.Lib.x64.dll`
-- `run-client-ndi.bat`
-
-Build avec reception NDI reelle:
-
-```bash
-cargo build -p riverflow-client-ndi --features ndi
-```
-
-Ce mode necessite le SDK NDI installe localement (headers + runtime).
-
-## Package portable Linux
-
-Pour creer un dossier portable a copier sur une autre machine Linux:
-
-```bash
-cd Apps/ClientNDI
-./package_portable_linux.sh /chemin/vers/Processing.NDI.Lib.x86_64.so
-```
-
-Le script cree:
-
-- Dist/linux/client/riverflow-client-ndi/riverflow-client-ndi
-- Dist/linux/client/riverflow-client-ndi/riverflow-client-ndi.yaml
-- Dist/linux/client/riverflow-client-ndi/Processing.NDI.Lib.x86_64.so
-- Dist/linux/client/riverflow-client-ndi/run.sh
-
-Puis lancer avec:
-
-```bash
-Dist/linux/client/riverflow-client-ndi/run.sh
-```
-
-Important:
-
-- NDI ne peut pas etre compile en binaire 100% autonome sans librairie runtime.
-- Le mode portable consiste a fournir un dossier self-contained avec le .so NDI a cote du binaire.
-
-## Fichier YAML auto-genere
-
-Un YAML par defaut est genere automatiquement dans `target/<profile>/riverflow-client-ndi.yaml`
-si absent lors de la compilation.
+Un seul port UDP pour tous les streams, routage par `id`.
