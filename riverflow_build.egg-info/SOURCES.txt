@@ -1,6 +1,0 @@
-README.md
-pyproject.toml
-riverflow_build.egg-info/PKG-INFO
-riverflow_build.egg-info/SOURCES.txt
-riverflow_build.egg-info/dependency_links.txt
-riverflow_build.egg-info/top_level.txt
