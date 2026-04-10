@@ -57,7 +57,7 @@
       {
         "label": "Build: Server Mocap",
         "type": "shell",
-        "command": "uv run build.py server-mocap",
+        "command": "uv run build.py server-mocap && bash Dist/linux/serveur/run.sh",
         "group": { "kind": "build", "isDefault": false },
         "presentation": { "reveal": "always", "panel": "shared" },
         "problemMatcher": []

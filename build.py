@@ -72,9 +72,48 @@ def build_client_ndi() -> bool:
 
 
 def build_server_mocap() -> bool:
-    print("\n=== Build: Server Mocap (non encore implémenté) ===")
-    print("  ⚠ Projet Python — packaging (PyInstaller ou autre) à définir")
-    return True
+    print("\n=== Build: Server Mocap (Linux + Windows) ===")
+
+    dist_linux = ROOT / "Dist/linux/serveur"
+    dist_win   = ROOT / "Dist/windows/serveur"
+    dist_linux.mkdir(parents=True, exist_ok=True)
+    dist_win.mkdir(parents=True, exist_ok=True)
+
+    ok = True
+
+    print("\n[Linux]")
+    result = subprocess.run(
+        ["cargo", "build", "-p", "riverflow-server", "--release"],
+        cwd=APPS
+    )
+    if result.returncode == 0:
+        src = APPS / "target/release/riverflow-server"
+        shutil.copy2(src, dist_linux / "riverflow-server")
+        (dist_linux / "riverflow-server").chmod(0o755)
+        run_sh = dist_linux / "run.sh"
+        run_sh.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
+            'exec "$SELF_DIR/riverflow-server" "$@"\n'
+        )
+        run_sh.chmod(0o755)
+        print(f"  ✓ {dist_linux}/riverflow-server")
+    else:
+        print("  ✗ Build Linux server-mocap échoué")
+        ok = False
+
+    print("\n[Windows]")
+    if run(["cargo", "build", "-p", "riverflow-server", "--release",
+            "--target", "x86_64-pc-windows-gnu"], cwd=APPS):
+        src = APPS / "target/x86_64-pc-windows-gnu/release/riverflow-server.exe"
+        shutil.copy2(src, dist_win / "riverflow-server.exe")
+        print(f"  ✓ {dist_win}/riverflow-server.exe")
+    else:
+        print("  ✗ Build Windows server-mocap échoué")
+        ok = False
+
+    return ok
 
 
 def build_unity() -> bool:
