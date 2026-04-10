@@ -81,7 +81,7 @@
       {
         "label": "Build: Client NDI",
         "type": "shell",
-        "command": "uv run build.py client-ndi",
+        "command": "uv run build.py client-ndi && bash Dist/linux/client/run.sh",
         "group": { "kind": "build", "isDefault": true },
         "presentation": { "reveal": "always", "panel": "shared" },
         "problemMatcher": []
