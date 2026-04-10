@@ -303,6 +303,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b62d0cfae320d1e5b6c79a3c8b85db8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaterRippleTest
+  walkSpeed: 0.6
+  stepWidth: 0.15
+  stepLength: 0.4
+  stanceTime: 0.4
+  halfRange: 10
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
