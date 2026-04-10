@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 370107bca3eec59438f4cbb9427e6bd8
+guid: f22b676d39f00c54385eec511eb310eb
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 9025269906177742027
-    second: T_Brush_0
+      213: -7795384144992274284
+    second: GroundDirt_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: T_Brush_0
+      name: GroundDirt_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
-        width: 600
-        height: 600
+        y: 211
+        width: 2337
+        height: 802
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: bc45fb76923304d70800000000000000
-      internalID: 9025269906177742027
+      spriteID: 498f50efb6b31d390800000000000000
+      internalID: -7795384144992274284
       vertices: []
       indices: 
       edges: []
@@ -125,7 +125,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      T_Brush_0: 9025269906177742027
+      GroundDirt_0: -7795384144992274284
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
