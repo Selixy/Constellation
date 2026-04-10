@@ -9,6 +9,7 @@ default = []
 ndi = ["dep:grafton-ndi"]
 
 [dependencies]
+ctrlc = "3"
 font8x8 = "0.3"
 grafton-ndi = { version = "0.11", optional = true }
 minifb = "0.27"
