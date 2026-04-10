@@ -46,8 +46,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _Alpha: 0.75
-    - _AlphaMax: 1
-    - _AlphaMin: 0.574
+    - _AlphaMax: 0.236
+    - _AlphaMin: 0
     - _BumpStrength: 0.01
     - _Contrast: 8
     - _DistanceFalloff: 0.6
@@ -57,16 +57,16 @@ Material:
     - _RippleAmplitude: 0.4
     - _RippleFrequency: 8
     - _RippleSpeed: -0.25
-    - _Scale: 54.8
+    - _Scale: 18.7
     - _Speed: 2.87
     - _WaveColorStrength: 0.15
     - _ZWrite: 0
     m_Colors:
-    - _BaseColor: {r: 0.52855104, g: 0.80410445, b: 0.9245283, a: 0}
+    - _BaseColor: {r: 0.5294118, g: 0.9254902, b: 0.8770816, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _HighlightColor: {r: 0.8, g: 0.95, b: 1, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-    - _SpotColor: {r: 0.31011927, g: 0.6509434, b: 0.48187318, a: 1}
+    - _SpotColor: {r: 0.26226407, g: 1, b: 0.66038233, a: 1}
     - _WaterColor: {r: 0.1, g: 0.4, b: 0.7, a: 0.8}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

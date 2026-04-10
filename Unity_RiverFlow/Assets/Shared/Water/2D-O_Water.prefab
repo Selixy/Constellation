@@ -107,7 +107,7 @@ MonoBehaviour:
   impactLifetime: 10
   maxInteractors: 32
   simulationSpeed: 1
-  resolution: 512
+  resolution: 2048
   simStepsPerFrame: 8
   damping: 0.999
   stampRadius: 0.02
