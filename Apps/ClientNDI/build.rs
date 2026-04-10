@@ -6,11 +6,9 @@ const DEFAULT_CONFIG: &str = r#"streams:
   - id: camera_1
     ip: 127.0.0.1
   - id: camera_2
-    ip: 127.0.0.2
+    ip: 127.0.0.1
   - id: camera_3
-    ip: 127.0.0.3
-  - id: camera_4
-    ip: 127.0.0.4
+    ip: 127.0.0.1
 "#;
 
 fn main() {
