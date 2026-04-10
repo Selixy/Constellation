@@ -1,38 +1,47 @@
 use font8x8::{BASIC_FONTS, UnicodeFonts};
 use minifb::{Window, WindowOptions};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::net::UdpSocket;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::thread;
 use std::time::{Duration, Instant};
 
-#[cfg(feature = "ndi")]
-use grafton_ndi::{
-    Finder, FinderOptions, Receiver, ReceiverBandwidth, ReceiverColorFormat, ReceiverOptions,
-};
+// UDP fragmentation protocol:
+//   Header (8 bytes, little-endian):
+//     [0..4]  frame_id   : u32
+//     [4..6]  frag_idx   : u16  (0-based)
+//     [6..8]  frag_count : u16
+//   Payload: JPEG fragment bytes
 
-#[cfg(feature = "ndi")]
-type NdiReceiver = Receiver;
-
-#[cfg(not(feature = "ndi"))]
-#[derive(Debug, Clone, Copy)]
-struct NdiReceiver;
+const HEADER_SIZE: usize = 8;
+const MAX_PACKET: usize = 65536;
+// Stale partial frames older than this are dropped
+const FRAME_TIMEOUT: Duration = Duration::from_millis(500);
 
 const DEFAULT_CONFIG: &str = r#"streams:
   - id: camera_1
-    ip: 127.0.0.1
+    ip: 192.168.1.100
+    port: 7001
   - id: camera_2
-    ip: 127.0.0.1
+    ip: 192.168.1.100
+    port: 7002
   - id: camera_3
-    ip: 127.0.0.1
+    ip: 192.168.1.100
+    port: 7003
 "#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StreamPair {
     id: String,
     ip: String,
+    port: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,9 +49,44 @@ struct ClientConfig {
     streams: Vec<StreamPair>,
 }
 
+struct PartialFrame {
+    frags: Vec<Option<Vec<u8>>>,
+    received: usize,
+    total: usize,
+    last_update: Instant,
+}
+
+impl PartialFrame {
+    fn new(total: usize) -> Self {
+        Self {
+            frags: vec![None; total],
+            received: 0,
+            total,
+            last_update: Instant::now(),
+        }
+    }
+
+    /// Insert a fragment. Returns true when all fragments are received.
+    fn insert(&mut self, idx: usize, data: Vec<u8>) -> bool {
+        if idx < self.total && self.frags[idx].is_none() {
+            self.frags[idx] = Some(data);
+            self.received += 1;
+            self.last_update = Instant::now();
+        }
+        self.received == self.total
+    }
+
+    fn assemble(&self) -> Vec<u8> {
+        self.frags
+            .iter()
+            .flat_map(|f| f.as_ref().unwrap().iter().copied())
+            .collect()
+    }
+}
+
 fn main() {
     if let Err(err) = run() {
-        eprintln!("RiverFlow ClientNDI error: {err}");
+        eprintln!("RiverFlow Client error: {err}");
         std::process::exit(1);
     }
 }
@@ -52,7 +96,7 @@ fn run() -> Result<(), String> {
     let config = load_config(&config_path)?;
 
     if config.streams.is_empty() {
-        return Err("Le fichier YAML ne contient aucune paire id/ip dans streams".to_string());
+        return Err("Le fichier YAML ne contient aucun stream dans 'streams'".to_string());
     }
 
     let shutdown = Arc::new(AtomicBool::new(false));
@@ -82,7 +126,8 @@ fn run() -> Result<(), String> {
 }
 
 fn resolve_or_create_config_path() -> Result<PathBuf, String> {
-    let exe = env::current_exe().map_err(|e| format!("Impossible de lire le chemin executable: {e}"))?;
+    let exe = env::current_exe()
+        .map_err(|e| format!("Impossible de lire le chemin executable: {e}"))?;
     let exe_dir = exe
         .parent()
         .ok_or_else(|| "Impossible de determiner le dossier executable".to_string())?;
@@ -114,11 +159,14 @@ fn load_config(path: &Path) -> Result<ClientConfig, String> {
 }
 
 fn run_stream_window(pair: StreamPair, shutdown: Arc<AtomicBool>) -> Result<(), String> {
-    #[cfg(feature = "ndi")]
-    let ndi = grafton_ndi::NDI::new().map_err(|e| format!("NDI init failed pour {}: {e}", pair.id))?;
+    let socket = UdpSocket::bind(format!("0.0.0.0:{}", pair.port))
+        .map_err(|e| format!("Bind UDP 0.0.0.0:{} impossible pour '{}': {e}", pair.port, pair.id))?;
+    socket
+        .set_read_timeout(Some(Duration::from_millis(5)))
+        .map_err(|e| format!("set_read_timeout failed: {e}"))?;
 
     let mut window = Window::new(
-        &format!("{} [{}] - NO SIGNAL", pair.id, pair.ip),
+        &format!("{} [{}:{}] - NO SIGNAL", pair.id, pair.ip, pair.port),
         960,
         540,
         WindowOptions {
@@ -127,183 +175,143 @@ fn run_stream_window(pair: StreamPair, shutdown: Arc<AtomicBool>) -> Result<(), 
             ..WindowOptions::default()
         },
     )
-    .map_err(|e| format!("Impossible de creer la fenetre {}: {e}", pair.id))?;
+    .map_err(|e| format!("Impossible de creer la fenetre '{}': {e}", pair.id))?;
     window.set_target_fps(60);
 
-    let mut receiver: Option<NdiReceiver> = None;
-    let mut last_connect_attempt = Instant::now() - Duration::from_secs(10);
     let mut frame_buffer: Vec<u32> = Vec::new();
+    let mut partial_frames: HashMap<u32, PartialFrame> = HashMap::new();
+    // Last successfully decoded frame (RGB 0x00RRGGBB)
+    let mut live_pixels: Option<(Vec<u32>, usize, usize)> = None;
+    let mut recv_buf = vec![0u8; MAX_PACKET];
 
     while window.is_open() && !shutdown.load(Ordering::Relaxed) {
-        if receiver.is_none() && last_connect_attempt.elapsed() >= Duration::from_secs(2) {
-            #[cfg(feature = "ndi")]
-            { receiver = try_connect_receiver(&pair, &ndi).ok(); }
-            #[cfg(not(feature = "ndi"))]
-            { receiver = try_connect_receiver(&pair).ok(); }
-            last_connect_attempt = Instant::now();
+        // Drain all pending UDP packets this tick
+        loop {
+            match socket.recv(&mut recv_buf) {
+                Ok(len) => {
+                    if len < HEADER_SIZE {
+                        continue;
+                    }
+                    let frame_id =
+                        u32::from_le_bytes(recv_buf[0..4].try_into().unwrap());
+                    let frag_idx =
+                        u16::from_le_bytes(recv_buf[4..6].try_into().unwrap()) as usize;
+                    let frag_count =
+                        u16::from_le_bytes(recv_buf[6..8].try_into().unwrap()) as usize;
+
+                    if frag_count == 0 || frag_idx >= frag_count {
+                        continue;
+                    }
+
+                    let payload = recv_buf[HEADER_SIZE..len].to_vec();
+                    let partial = partial_frames
+                        .entry(frame_id)
+                        .or_insert_with(|| PartialFrame::new(frag_count));
+
+                    if partial.insert(frag_idx, payload) {
+                        let jpeg_data = partial.assemble();
+                        partial_frames.remove(&frame_id);
+
+                        // Purge stale incomplete frames
+                        partial_frames
+                            .retain(|_, v| v.last_update.elapsed() < FRAME_TIMEOUT);
+
+                        match decode_jpeg(&jpeg_data) {
+                            Ok((pixels, w, h)) => {
+                                live_pixels = Some((pixels, w, h));
+                            }
+                            Err(e) => eprintln!("'{}' JPEG decode error: {e}", pair.id),
+                        }
+                    }
+                }
+                Err(ref e)
+                    if e.kind() == std::io::ErrorKind::WouldBlock
+                        || e.kind() == std::io::ErrorKind::TimedOut =>
+                {
+                    break
+                }
+                Err(e) => {
+                    eprintln!("'{}' UDP recv error: {e}", pair.id);
+                    break;
+                }
+            }
         }
 
         let (win_w, win_h) = window.get_size();
         if win_w == 0 || win_h == 0 {
             continue;
         }
-        let required = win_w.saturating_mul(win_h);
+        let required = win_w * win_h;
         if frame_buffer.len() != required {
             frame_buffer.resize(required, 0x0010_1010);
         }
 
-        #[cfg(feature = "ndi")]
-        let mut got_video = false;
-        #[cfg(not(feature = "ndi"))]
-        let got_video = false;
-        #[cfg(feature = "ndi")]
-        {
-            if let Some(rx) = &receiver {
-                match rx.capture_video_timeout(Duration::from_millis(5)) {
-                    Ok(Some(frame)) => {
-                        if let Err(err) = blit_frame_cover(&frame, &mut frame_buffer, win_w, win_h)
-                        {
-                            eprintln!("{} frame decode error: {err}", pair.id);
-                        } else {
-                            got_video = true;
-                        }
-                    }
-                    Ok(None) => {}
-                    Err(_) => {
-                        receiver = None;
-                    }
-                }
-            }
-        }
-
-        #[cfg(not(feature = "ndi"))]
-        {
-            let _ = &receiver;
-        }
-
-        if !got_video {
-            draw_no_signal(&mut frame_buffer, win_w, win_h, &pair.id, &pair.ip);
-            let _ = window.set_title(&format!("{} [{}] - NO SIGNAL", pair.id, pair.ip));
+        if let Some((ref pixels, src_w, src_h)) = live_pixels {
+            blit_cover(pixels, src_w, src_h, &mut frame_buffer, win_w, win_h);
+            let _ = window
+                .set_title(&format!("{} [{}:{}] - LIVE", pair.id, pair.ip, pair.port));
         } else {
-            let _ = window.set_title(&format!("{} [{}] - LIVE", pair.id, pair.ip));
+            draw_no_signal(&mut frame_buffer, win_w, win_h, &pair.id, &pair.ip, pair.port);
+            let _ = window.set_title(&format!(
+                "{} [{}:{}] - NO SIGNAL",
+                pair.id, pair.ip, pair.port
+            ));
         }
 
         window
             .update_with_buffer(&frame_buffer, win_w, win_h)
-            .map_err(|e| format!("Erreur update fenetre {}: {e}", pair.id))?;
+            .map_err(|e| format!("Erreur update fenetre '{}': {e}", pair.id))?;
     }
 
     shutdown.store(true, Ordering::Relaxed);
     Ok(())
 }
 
-#[cfg(feature = "ndi")]
-fn try_connect_receiver(pair: &StreamPair, ndi: &grafton_ndi::NDI) -> Result<NdiReceiver, String> {
-    let finder_options = FinderOptions::builder()
-        .show_local_sources(true)
-        .extra_ips(pair.ip.as_str())
-        .build();
-    let finder = Finder::new(ndi, &finder_options).map_err(|e| format!("Finder failed: {e}"))?;
-
-    let _ = finder.wait_for_sources(Duration::from_millis(800));
-    let sources = finder
-        .sources(Duration::from_millis(200))
-        .map_err(|e| format!("Source scan failed: {e}"))?;
-
-    // Filtre par IP d'abord, puis par id (nom du flux NDI).
-    // Le nom NDI est au format "MACHINE (id)" — on cherche l'id dans le nom.
-    let source = sources
-        .into_iter()
-        .filter(|s| s.matches_host(&pair.ip))
-        .find(|s| s.name.to_lowercase().contains(&pair.id.to_lowercase()))
-        .or_else(|| {
-            // Fallback : si aucun ne matche le nom, on prend le premier qui matche l'IP
-            // (comportement legacy pour configs sans id précis)
-            eprintln!(
-                "Aucune source NDI avec id '{}' sur {}, tentative sur toutes les sources de cette IP",
-                pair.id, pair.ip
-            );
-            None
-        })
-        .ok_or_else(|| format!(
-            "Aucune source NDI '{}' trouvee sur {} — sources disponibles filtrées par IP",
-            pair.id, pair.ip
-        ))?;
-
-    let options = ReceiverOptions::builder(source)
-        .color(ReceiverColorFormat::BGRX_BGRA)
-        .bandwidth(ReceiverBandwidth::Highest)
-        .name(format!("RiverFlow ClientNDI {}", pair.id))
-        .build();
-
-    Receiver::new(ndi, &options).map_err(|e| format!("Receiver create failed: {e}"))
+fn decode_jpeg(data: &[u8]) -> Result<(Vec<u32>, usize, usize), String> {
+    let img = image::load_from_memory(data)
+        .map_err(|e| format!("JPEG decode: {e}"))?
+        .into_rgb8();
+    let w = img.width() as usize;
+    let h = img.height() as usize;
+    let raw = img.into_raw(); // Vec<u8>, RGB interleaved
+    let pixels: Vec<u32> = raw
+        .chunks_exact(3)
+        .map(|c| ((c[0] as u32) << 16) | ((c[1] as u32) << 8) | c[2] as u32)
+        .collect();
+    Ok((pixels, w, h))
 }
 
-#[cfg(not(feature = "ndi"))]
-fn try_connect_receiver(_pair: &StreamPair) -> Result<NdiReceiver, String> {
-    Err("Client compile sans feature NDI. Rebuild avec --features ndi".to_string())
-}
-
-#[cfg(feature = "ndi")]
-fn blit_frame_cover(
-    frame: &grafton_ndi::VideoFrame,
+fn blit_cover(
+    src: &[u32],
+    src_w: usize,
+    src_h: usize,
     dst: &mut [u32],
     dst_w: usize,
     dst_h: usize,
-) -> Result<(), String> {
-    if frame.width <= 0 || frame.height <= 0 {
-        return Err("Frame dimensions invalides".to_string());
+) {
+    if src_w == 0 || src_h == 0 {
+        return;
     }
-
-    let src_w = frame.width as usize;
-    let src_h = frame.height as usize;
-
-    let stride = match frame.line_stride_or_size {
-        grafton_ndi::LineStrideOrSize::LineStrideBytes(v) => v as usize,
-        grafton_ndi::LineStrideOrSize::DataSizeBytes(_) => {
-            return Err("Format compresse non supporte pour affichage direct".to_string())
-        }
-    };
-
-    if stride < src_w * 4 {
-        return Err("Stride frame invalide".to_string());
-    }
-
     let scale = (dst_w as f32 / src_w as f32).max(dst_h as f32 / src_h as f32);
-    let rendered_w = src_w as f32 * scale;
-    let rendered_h = src_h as f32 * scale;
-    let crop_x = (rendered_w - dst_w as f32) * 0.5;
-    let crop_y = (rendered_h - dst_h as f32) * 0.5;
+    let crop_x = (src_w as f32 * scale - dst_w as f32) * 0.5;
+    let crop_y = (src_h as f32 * scale - dst_h as f32) * 0.5;
 
     for y in 0..dst_h {
         for x in 0..dst_w {
-            let sx_f = ((x as f32 + crop_x) / scale).clamp(0.0, (src_w - 1) as f32);
-            let sy_f = ((y as f32 + crop_y) / scale).clamp(0.0, (src_h - 1) as f32);
-            let sx = sx_f as usize;
-            let sy = sy_f as usize;
-
-            let src_i = sy * stride + sx * 4;
-            let b = frame.data[src_i] as u32;
-            let g = frame.data[src_i + 1] as u32;
-            let r = frame.data[src_i + 2] as u32;
-
-            dst[y * dst_w + x] = (r << 16) | (g << 8) | b;
+            let sx = (((x as f32 + crop_x) / scale) as usize).min(src_w - 1);
+            let sy = (((y as f32 + crop_y) / scale) as usize).min(src_h - 1);
+            dst[y * dst_w + x] = src[sy * src_w + sx];
         }
     }
-
-    Ok(())
 }
 
-fn draw_no_signal(dst: &mut [u32], w: usize, h: usize, id: &str, ip: &str) {
+fn draw_no_signal(dst: &mut [u32], w: usize, h: usize, id: &str, ip: &str, port: u16) {
     for px in dst.iter_mut() {
         *px = 0x0012_1212;
     }
-
-    let line1 = "NO SIGNAL";
-    let line2 = &format!("{} ({})", id, ip);
-
-    draw_centered_text(dst, w, h, line1, (h / 2).saturating_sub(20), 0x00FF_FFFF, 3);
-    draw_centered_text(dst, w, h, line2, (h / 2).saturating_add(20), 0x00C8_C8C8, 2);
+    draw_centered_text(dst, w, h, "NO SIGNAL", (h / 2).saturating_sub(20), 0x00FF_FFFF, 3);
+    let line2 = format!("{} ({}:{})", id, ip, port);
+    draw_centered_text(dst, w, h, &line2, (h / 2).saturating_add(20), 0x00C8_C8C8, 2);
 }
 
 fn draw_centered_text(
@@ -318,7 +326,6 @@ fn draw_centered_text(
     let char_w = 8 * scale;
     let text_w = text.chars().count() * char_w;
     let x0 = w.saturating_sub(text_w) / 2;
-
     let mut x = x0;
     for ch in text.chars() {
         draw_char(dst, w, h, x, y, ch, color, scale);

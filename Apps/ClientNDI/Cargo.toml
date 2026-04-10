@@ -4,14 +4,10 @@ version = "0.1.0"
 edition = "2021"
 build = "build.rs"
 
-[features]
-default = []
-ndi = ["dep:grafton-ndi"]
-
 [dependencies]
 ctrlc = "3"
 font8x8 = "0.3"
-grafton-ndi = { version = "0.11", optional = true }
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
 minifb = "0.27"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

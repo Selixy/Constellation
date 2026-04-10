@@ -18,11 +18,10 @@ def run(cmd: list[str], cwd: Path | None = None) -> bool:
 
 ROOT = Path(__file__).parent
 APPS = ROOT / "Apps"
-NDI_SDK = APPS / "ndi-sdk"
 
 
 def build_client_ndi() -> bool:
-    print("\n=== Build: Client NDI (Linux + Windows) ===")
+    print("\n=== Build: Client UDP (Linux + Windows) ===")
 
     dist_linux = ROOT / "Dist/linux/client"
     dist_win = ROOT / "Dist/windows/client"
@@ -31,7 +30,6 @@ def build_client_ndi() -> bool:
 
     ok = True
 
-    # Linux (sans NDI — fenêtres NO SIGNAL, pas de dépendance libndi)
     print("\n[Linux]")
     result = subprocess.run(
         ["cargo", "build", "-p", "riverflow-client-ndi", "--release"],
@@ -44,17 +42,11 @@ def build_client_ndi() -> bool:
         yaml_src = APPS / "target/release/riverflow-client-ndi.yaml"
         if yaml_src.exists():
             shutil.copy2(yaml_src, dist_linux / "riverflow-client-ndi.yaml")
-        # Copier le vrai .so NDI + symlinks dans Dist si pas déjà présents
-        real_so = dist_linux / "libndi.so.6.3.1"
-        if not real_so.exists():
-            print("  ⚠ libndi.so.6.3.1 absent de Dist/linux/client — à copier manuellement depuis le NDI runtime")
-        # Écrire run.sh avec LD_LIBRARY_PATH
         run_sh = dist_linux / "run.sh"
         run_sh.write_text(
             "#!/usr/bin/env bash\n"
             "set -euo pipefail\n"
             'SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
-            'export LD_LIBRARY_PATH="$SELF_DIR:${LD_LIBRARY_PATH:-}"\n'
             'exec "$SELF_DIR/riverflow-client-ndi" "$@"\n'
         )
         run_sh.chmod(0o755)
@@ -63,9 +55,7 @@ def build_client_ndi() -> bool:
         print("  ✗ Build Linux client-ndi échoué")
         ok = False
 
-    # Windows (cross-compile sans NDI — grafton-ndi ne supporte pas le cross-compile Linux→Windows)
-    # Pour un build Windows avec NDI, builder nativement sur Windows avec build_dist_windows.ps1
-    print("\n[Windows] (sans NDI — NO SIGNAL mode)")
+    print("\n[Windows]")
     if run(["cargo", "build", "-p", "riverflow-client-ndi", "--release",
             "--target", "x86_64-pc-windows-gnu"], cwd=APPS):
         src = APPS / "target/x86_64-pc-windows-gnu/release/riverflow-client-ndi.exe"
@@ -73,7 +63,7 @@ def build_client_ndi() -> bool:
         yaml_src = APPS / "target/release/riverflow-client-ndi.yaml"
         if yaml_src.exists():
             shutil.copy2(yaml_src, dist_win / "riverflow-client-ndi.yaml")
-        print(f"  ✓ {dist_win}/riverflow-client-ndi.exe (NO SIGNAL — NDI nécessite un build natif Windows)")
+        print(f"  ✓ {dist_win}/riverflow-client-ndi.exe")
     else:
         print("  ✗ Build Windows client-ndi échoué")
         ok = False
@@ -117,14 +107,55 @@ LAUNCH = {
 
 
 def launch(target: str):
-    os_name = platform.system()  # "Linux" ou "Windows"
+    import os
+    os_name = platform.system()
     launchers = LAUNCH.get(target, {})
     launcher = launchers.get(os_name)
-    if launcher and launcher.exists():
-        print(f"\n→ Lancement : {launcher}")
-        subprocess.Popen([str(launcher)], start_new_session=True)
-    elif launcher:
+    if not launcher:
+        return
+    if not launcher.exists():
         print(f"\n⚠ Launcher introuvable : {launcher}")
+        return
+
+    print(f"\n→ Lancement : {launcher}")
+
+    if os_name == "Linux":
+        import os, glob
+
+        uid = os.getuid()
+
+        # Lire l'environnement depuis un process graphique actif du même user
+        def get_display_env() -> dict:
+            for pid_path in glob.glob("/proc/*/environ"):
+                try:
+                    pid = pid_path.split("/")[2]
+                    if str(uid) != open(f"/proc/{pid}/status").read().split("Uid:")[1].split()[0]:
+                        continue
+                    raw = open(pid_path, "rb").read()
+                    env = dict(
+                        e.split("=", 1) for e in raw.decode(errors="replace").split("\0")
+                        if "=" in e
+                    )
+                    if env.get("WAYLAND_DISPLAY") or env.get("DISPLAY"):
+                        return env
+                except Exception:
+                    continue
+            return {}
+
+        env = os.environ.copy()
+        env.update(get_display_env())
+
+        # Fallbacks
+        if "XDG_RUNTIME_DIR" not in env:
+            env["XDG_RUNTIME_DIR"] = f"/run/user/{uid}"
+        if "WAYLAND_DISPLAY" not in env:
+            sockets = glob.glob(f"{env['XDG_RUNTIME_DIR']}/wayland-*")
+            wayland = next((os.path.basename(s) for s in sockets if not s.endswith(".lock")), "wayland-0")
+            env["WAYLAND_DISPLAY"] = wayland
+
+        subprocess.Popen(["bash", str(launcher)], env=env, start_new_session=True)
+    else:
+        subprocess.Popen([str(launcher)], start_new_session=True)
 
 
 def main():
@@ -145,9 +176,6 @@ def main():
     for name, success in results.items():
         print(f"  {'✓' if success else '✗'} {name}")
     print("=" * 50)
-
-    if ok and target != "all":
-        launch(target)
 
     sys.exit(0 if ok else 1)
 
