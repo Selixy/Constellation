@@ -212,10 +212,25 @@ fn try_connect_receiver(pair: &StreamPair, ndi: &grafton_ndi::NDI) -> Result<Ndi
         .sources(Duration::from_millis(200))
         .map_err(|e| format!("Source scan failed: {e}"))?;
 
+    // Filtre par IP d'abord, puis par id (nom du flux NDI).
+    // Le nom NDI est au format "MACHINE (id)" — on cherche l'id dans le nom.
     let source = sources
         .into_iter()
-        .find(|s| s.matches_host(&pair.ip))
-        .ok_or_else(|| format!("Aucune source NDI trouvee pour {} ({})", pair.id, pair.ip))?;
+        .filter(|s| s.matches_host(&pair.ip))
+        .find(|s| s.name.to_lowercase().contains(&pair.id.to_lowercase()))
+        .or_else(|| {
+            // Fallback : si aucun ne matche le nom, on prend le premier qui matche l'IP
+            // (comportement legacy pour configs sans id précis)
+            eprintln!(
+                "Aucune source NDI avec id '{}' sur {}, tentative sur toutes les sources de cette IP",
+                pair.id, pair.ip
+            );
+            None
+        })
+        .ok_or_else(|| format!(
+            "Aucune source NDI '{}' trouvee sur {} — sources disponibles filtrées par IP",
+            pair.id, pair.ip
+        ))?;
 
     let options = ReceiverOptions::builder(source)
         .color(ReceiverColorFormat::BGRX_BGRA)
