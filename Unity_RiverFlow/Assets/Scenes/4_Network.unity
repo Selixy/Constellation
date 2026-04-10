@@ -203,6 +203,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1029597976}
+  - component: {fileID: 1029597977}
   m_Layer: 0
   m_Name: ----Network----
   m_TagString: Untagged
@@ -227,6 +228,20 @@ Transform:
   - {fileID: 2107311642}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1029597977
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1029597975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e91ea6dbf4003bfde839df48420b8526, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RiverFlowNetwork
+  targetIp: 127.0.0.1
+  targetPort: 7000
 --- !u!1 &1969563098
 GameObject:
   m_ObjectHideFlags: 0
@@ -303,6 +318,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b62d0cfae320d1e5b6c79a3c8b85db8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaterRippleTest
+  walkSpeed: 0.6
+  stepWidth: 0.15
+  stepLength: 0.4
+  stanceTime: 0.4
+  halfRange: 10
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
