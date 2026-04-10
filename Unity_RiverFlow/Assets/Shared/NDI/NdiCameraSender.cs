@@ -33,7 +33,12 @@ public class NdiCameraSender : MonoBehaviour
         _rt.Create();
         _tex = new Texture2D(captureWidth, captureHeight, TextureFormat.RGB24, false);
 
-        GetComponent<Camera>().targetTexture = _rt;
+        var cam = GetComponent<Camera>();
+        cam.targetTexture = _rt;
+
+        // Empêche cette caméra d'être trouvée par Camera.main (tag "MainCamera")
+        if (cam.CompareTag("MainCamera"))
+            cam.tag = "Untagged";
 
         if (RiverFlowNetwork.Instance == null)
             Debug.LogWarning($"[NdiCameraSender:{streamId}] RiverFlowNetwork introuvable dans la scène.");
