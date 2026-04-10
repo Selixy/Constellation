@@ -4,12 +4,13 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::thread;
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "ndi")]
 use grafton_ndi::{
-    Finder, FinderOptions, NDI, Receiver, ReceiverBandwidth, ReceiverColorFormat, ReceiverOptions,
+    Finder, FinderOptions, Receiver, ReceiverBandwidth, ReceiverColorFormat, ReceiverOptions,
 };
 
 #[cfg(feature = "ndi")]
@@ -56,9 +57,19 @@ fn run() -> Result<(), String> {
         return Err("Le fichier YAML ne contient aucune paire id/ip dans streams".to_string());
     }
 
+    let shutdown = Arc::new(AtomicBool::new(false));
+
+    {
+        let shutdown = Arc::clone(&shutdown);
+        let _ = ctrlc::set_handler(move || {
+            shutdown.store(true, Ordering::Relaxed);
+        });
+    }
+
     let mut handles = Vec::with_capacity(config.streams.len());
     for pair in config.streams {
-        handles.push(thread::spawn(move || run_stream_window(pair)));
+        let shutdown = Arc::clone(&shutdown);
+        handles.push(thread::spawn(move || run_stream_window(pair, shutdown)));
     }
 
     for handle in handles {
@@ -104,7 +115,10 @@ fn load_config(path: &Path) -> Result<ClientConfig, String> {
         .map_err(|e| format!("YAML invalide dans '{}': {e}", path.display()))
 }
 
-fn run_stream_window(pair: StreamPair) -> Result<(), String> {
+fn run_stream_window(pair: StreamPair, shutdown: Arc<AtomicBool>) -> Result<(), String> {
+    #[cfg(feature = "ndi")]
+    let ndi = grafton_ndi::NDI::new().map_err(|e| format!("NDI init failed pour {}: {e}", pair.id))?;
+
     let mut window = Window::new(
         &format!("{} [{}] - NO SIGNAL", pair.id, pair.ip),
         960,
@@ -122,9 +136,12 @@ fn run_stream_window(pair: StreamPair) -> Result<(), String> {
     let mut last_connect_attempt = Instant::now() - Duration::from_secs(10);
     let mut frame_buffer: Vec<u32> = Vec::new();
 
-    while window.is_open() {
+    while window.is_open() && !shutdown.load(Ordering::Relaxed) {
         if receiver.is_none() && last_connect_attempt.elapsed() >= Duration::from_secs(2) {
-            receiver = try_connect_receiver(&pair).ok();
+            #[cfg(feature = "ndi")]
+            { receiver = try_connect_receiver(&pair, &ndi).ok(); }
+            #[cfg(not(feature = "ndi"))]
+            { receiver = try_connect_receiver(&pair).ok(); }
             last_connect_attempt = Instant::now();
         }
 
@@ -178,17 +195,17 @@ fn run_stream_window(pair: StreamPair) -> Result<(), String> {
             .map_err(|e| format!("Erreur update fenetre {}: {e}", pair.id))?;
     }
 
+    shutdown.store(true, Ordering::Relaxed);
     Ok(())
 }
 
 #[cfg(feature = "ndi")]
-fn try_connect_receiver(pair: &StreamPair) -> Result<NdiReceiver, String> {
-    let ndi = NDI::new().map_err(|e| format!("NDI init failed: {e}"))?;
+fn try_connect_receiver(pair: &StreamPair, ndi: &grafton_ndi::NDI) -> Result<NdiReceiver, String> {
     let finder_options = FinderOptions::builder()
         .show_local_sources(true)
         .extra_ips(pair.ip.as_str())
         .build();
-    let finder = Finder::new(&ndi, &finder_options).map_err(|e| format!("Finder failed: {e}"))?;
+    let finder = Finder::new(ndi, &finder_options).map_err(|e| format!("Finder failed: {e}"))?;
 
     let _ = finder.wait_for_sources(Duration::from_millis(800));
     let sources = finder
@@ -206,7 +223,7 @@ fn try_connect_receiver(pair: &StreamPair) -> Result<NdiReceiver, String> {
         .name(format!("RiverFlow ClientNDI {}", pair.id))
         .build();
 
-    Receiver::new(&ndi, &options).map_err(|e| format!("Receiver create failed: {e}"))
+    Receiver::new(ndi, &options).map_err(|e| format!("Receiver create failed: {e}"))
 }
 
 #[cfg(not(feature = "ndi"))]
