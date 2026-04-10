@@ -46,9 +46,9 @@ Material:
     m_Ints: []
     m_Floats:
     - _Alpha: 0.75
-    - _AlphaMax: 0.852
-    - _AlphaMin: 0.613
-    - _BumpStrength: 0
+    - _AlphaMax: 0.687
+    - _AlphaMin: 0.127
+    - _BumpStrength: 0.01
     - _Contrast: 8
     - _DistanceFalloff: 0.6
     - _EnableExternalAlpha: 0
@@ -56,12 +56,12 @@ Material:
     - _RippleAmplitude: 0.4
     - _RippleFrequency: 8
     - _RippleSpeed: -0.25
-    - _Scale: 32.9
-    - _Speed: 0.67
+    - _Scale: 54.8
+    - _Speed: 2.87
     - _WaveColorStrength: 0.15
     - _ZWrite: 0
     m_Colors:
-    - _BaseColor: {r: 0.5573603, g: 0.7075472, b: 0.59263074, a: 0}
+    - _BaseColor: {r: 0.6094339, g: 1, b: 0.9898594, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _HighlightColor: {r: 0.8, g: 0.95, b: 1, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
