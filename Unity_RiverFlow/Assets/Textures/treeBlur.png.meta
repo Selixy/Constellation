@@ -1,10 +1,16 @@
 fileFormatVersion: 2
-guid: 370107bca3eec59438f4cbb9427e6bd8
+guid: ee51ed9e63fb1ba4dbd905cc35577e71
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 9025269906177742027
-    second: T_Brush_0
+      213: -4678613122825221062
+    second: treeBlur_0
+  - first:
+      213: -2512498073441946401
+    second: treeBlur_1
+  - first:
+      213: 7516945919385275173
+    second: treeBlur_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +106,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: T_Brush_0
+      name: treeBlur_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 600
-        height: 600
+        x: 133
+        y: 17
+        width: 1843
+        height: 1880
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +121,52 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: bc45fb76923304d70800000000000000
-      internalID: 9025269906177742027
+      spriteID: a3c8584372a321fb0800000000000000
+      internalID: -4678613122825221062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: treeBlur_1
+      rect:
+        serializedVersion: 2
+        x: 535
+        y: 1764
+        width: 318
+        height: 179
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd4b3a16050d12dd0800000000000000
+      internalID: -2512498073441946401
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: treeBlur_2
+      rect:
+        serializedVersion: 2
+        x: 118
+        y: 1047
+        width: 284
+        height: 382
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52b08c8bc7e815860800000000000000
+      internalID: 7516945919385275173
       vertices: []
       indices: 
       edges: []
@@ -135,7 +185,9 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      T_Brush_0: 9025269906177742027
+      treeBlur_0: -4678613122825221062
+      treeBlur_1: -2512498073441946401
+      treeBlur_2: 7516945919385275173
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
