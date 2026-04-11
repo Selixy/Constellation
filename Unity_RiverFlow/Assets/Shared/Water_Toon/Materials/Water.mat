@@ -48,14 +48,14 @@ Material:
     m_Floats:
     - _Contrast: 2
     - _Depth: 9.1
-    - _Displacement_Strenght: 2
+    - _Displacement_Strenght: 0.1
     - _Foam_Contrast: 0
-    - _Foam_Depth: 1.84
-    - _Foam_Scale: 1.34
-    - _Foam_Strenght: 0.04
+    - _Foam_Depth: 0
+    - _Foam_Scale: 0
+    - _Foam_Strenght: 2
     - _Foam_Strenght_1: 0.2
-    - _Gradient_Placement: 1000
-    - _Opacity: -0.08
+    - _Gradient_Placement: 0
+    - _Opacity: 1.39
     - _Opaque_Placement: 0
     - _Opaque_Placement_1: 0
     - _QueueControl: 0
@@ -65,15 +65,15 @@ Material:
     - _Strenght: 0.05
     - _Transparent_Placement: 0
     - _Water_Contrast: 0.06
-    - _Water_Depth: -63.36
-    - _Water_Speed: 0.02
+    - _Water_Depth: 0
+    - _Water_Speed: 0.01
     - _Waves_Contrast: 6.04
-    - _Waves_Scale: 7
+    - _Waves_Scale: 4
     m_Colors:
     - _Color: {r: 0.6396227, g: 0.8968999, b: 1, a: 1}
-    - _Deep_Color: {r: 0, g: 0.34140906, b: 0.37254903, a: 0}
-    - _Foam_Color: {r: 0.28627452, g: 0.51877904, b: 0.5411765, a: 1}
-    - _Shallow_Color: {r: 0.06666667, g: 0.15686275, b: 0.13971566, a: 0}
+    - _Deep_Color: {r: 0, g: 0.4867924, b: 0.33573118, a: 0}
+    - _Foam_Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Shallow_Color: {r: 0.25471687, g: 0.70045334, b: 1, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &575043862672982706
