@@ -12,37 +12,65 @@ PrefabInstance:
       propertyPath: m_Name
       value: Sprites_Fish_E
       objectReference: {fileID: 0}
-    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+    - target: {fileID: -8268033429116936641, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 55
+      value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+    - target: {fileID: -8268033429116936641, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalPosition.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+    - target: {fileID: -8268033429116936641, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -8268033429116936641, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.8
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -20.7
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0
+      value: -0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: 90
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -50,7 +78,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: 180
+      objectReference: {fileID: 0}
+    - target: {fileID: -7552582706839291426, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -59,83 +91,28 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8653719598885068355, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7456948919816224}
-    - targetCorrespondingSourceObject: {fileID: 6331084068163840902, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+    - targetCorrespondingSourceObject: {fileID: 234506738721152278, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8310241617012631275}
+      addedObject: {fileID: 3153388818093238310}
   m_SourcePrefab: {fileID: 4843985084834002234, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
---- !u!4 &2669408019841650314 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8272203564524164558, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
-  m_PrefabInstance: {fileID: 2898241031397745848}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &2700635553724021383 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8268033429116936641, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
   m_PrefabInstance: {fileID: 2898241031397745848}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &3449564913040753925 stripped
+--- !u!1 &3132742265819396526 stripped
 GameObject:
-  m_CorrespondingSourceObject: {fileID: -8653719598885068355, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+  m_CorrespondingSourceObject: {fileID: 234506738721152278, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
   m_PrefabInstance: {fileID: 2898241031397745848}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &7456948919816224
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3449564913040753925}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c16b7e146629574d994ece338ef7ff3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Fishes
-  moveSpeed: 2
-  directionChangeInterval: 10
-  speedVariation: 0.2
-  turnSpeed: 1
-  boundsMin: {x: -10, y: -10, z: -10}
-  boundsMax: {x: 10, y: 10, z: 10}
-  enableBoneAnimation: 1
-  tailWaveAmplitude: 10
-  tailWaveFrequency: 2
-  finAnimationAmplitude: 10
-  finAnimationFrequency: 1.5
-  randomBoneNoiseScale: 0.3
-  rootBone: {fileID: 2700635553724021383}
-  bodyBone: {fileID: 7229372452198415997}
-  headBone: {fileID: 5941961059264538714}
-  finsBones:
-  - {fileID: 8731429753785101986}
-  - {fileID: 2669408019841650314}
---- !u!4 &5941961059264538714 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -410240135493972766, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
-  m_PrefabInstance: {fileID: 2898241031397745848}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &7229372452198415997 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 5506632604027935429, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
-  m_PrefabInstance: {fileID: 2898241031397745848}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &8731429753785101986 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 5842536257276578330, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
-  m_PrefabInstance: {fileID: 2898241031397745848}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &9215519008389254974 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6331084068163840902, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
-  m_PrefabInstance: {fileID: 2898241031397745848}
-  m_PrefabAsset: {fileID: 0}
---- !u!96 &8310241617012631275
+--- !u!96 &3153388818093238310
 TrailRenderer:
   serializedVersion: 4
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9215519008389254974}
+  m_GameObject: {fileID: 3132742265819396526}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -181,7 +158,7 @@ TrailRenderer:
   m_PreviewTimeScale: 1
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 2
+    widthMultiplier: 0.5
     widthCurve:
       serializedVersion: 2
       m_Curve:
@@ -247,3 +224,31 @@ TrailRenderer:
   m_Autodestruct: 0
   m_Emitting: 1
   m_ApplyActiveColorSpace: 1
+--- !u!1 &3449564913040753925 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: -8653719598885068355, guid: 4244e1706ce38754e8f8ccf6fb1bcecd, type: 3}
+  m_PrefabInstance: {fileID: 2898241031397745848}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7456948919816224
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3449564913040753925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c16b7e146629574d994ece338ef7ff3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Fishes
+  moveSpeed: 2
+  speedVariation: 0.5
+  turnInterval: 4
+  turnDuration: 0.8
+  turnAngle: 90
+  boundsMin: {x: -6, y: 1, z: -30}
+  boundsMax: {x: 12, y: 2.5, z: 30}
+  rootBone: {fileID: 2700635553724021383}
+  boneOscillationFrequency: 2
+  boneOscillationAmplitude: 10
+  boneRandomnessChance: 0.3
