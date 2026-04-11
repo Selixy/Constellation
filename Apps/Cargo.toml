@@ -1,3 +1,3 @@
 [workspace]
-members = ["ClientNDI", "Server"]
+members = ["ClientNDI"]
 resolver = "2"

@@ -1,0 +1,153 @@
+name: Build RiverFlow
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:        # déclenchement manuel depuis GitHub
+
+jobs:
+
+  # ── ClientNDI (Rust) — cross-compile depuis Linux ─────────────────────────
+  build-client-ndi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust stable + cible Windows
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - name: Installer mingw-w64
+        run: sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - name: Build Linux
+        run: cargo build -p riverflow-client-ndi --release
+        working-directory: Apps
+
+      - name: Build Windows (cross)
+        run: cargo build -p riverflow-client-ndi --release --target x86_64-pc-windows-gnu
+        working-directory: Apps
+
+      - name: Préparer artefacts client
+        run: |
+          mkdir -p Dist/linux/client Dist/windows/client
+          cp Apps/target/release/riverflow-client-ndi          Dist/linux/client/
+          cp Apps/target/x86_64-pc-windows-gnu/release/riverflow-client-ndi.exe  Dist/windows/client/
+          chmod +x Dist/linux/client/riverflow-client-ndi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-ndi
+          path: Dist/
+
+  # ── Server Mocap (Python) — Linux ─────────────────────────────────────────
+  build-server-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Installer dépendances système Qt
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            libgl1 libglib2.0-0 libdbus-1-3 \
+            libxkbcommon-x11-0 libxcb-cursor0 \
+            libxcb-icccm4 libxcb-keysyms1 libxcb-shape0
+
+      - name: uv sync
+        run: uv sync --group dev
+        working-directory: Apps/Server
+
+      - name: PyInstaller Linux
+        run: |
+          uv run pyinstaller \
+            --onedir \
+            --name riverflow-server \
+            --distpath ../../Dist/linux/serveur \
+            --workpath /tmp/pyinstaller_build \
+            --specpath /tmp/pyinstaller_spec \
+            --noconfirm \
+            src/riverflow_server/main.py
+        working-directory: Apps/Server
+
+      - name: Créer run.sh
+        run: |
+          cat > Dist/linux/serveur/run.sh << 'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          exec "$SELF_DIR/riverflow-server/riverflow-server" "$@"
+          EOF
+          chmod +x Dist/linux/serveur/run.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-linux
+          path: Dist/linux/serveur/
+
+  # ── Server Mocap (Python) — Windows ───────────────────────────────────────
+  build-server-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: uv sync
+        run: uv sync --group dev
+        working-directory: Apps/Server
+
+      - name: PyInstaller Windows
+        run: |
+          uv run pyinstaller `
+            --onedir `
+            --name riverflow-server `
+            --distpath ..\..\Dist\windows\serveur `
+            --workpath $env:TEMP\pyinstaller_build `
+            --specpath $env:TEMP\pyinstaller_spec `
+            --noconfirm `
+            src\riverflow_server\main.py
+        working-directory: Apps/Server
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-windows
+          path: Dist/windows/serveur/
+
+  # ── Assemblage final ───────────────────────────────────────────────────────
+  assemble:
+    needs: [build-client-ndi, build-server-linux, build-server-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: client-ndi
+          path: Dist/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-linux
+          path: Dist/linux/serveur/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-windows
+          path: Dist/windows/serveur/
+
+      - name: Archiver Dist complète
+        run: |
+          zip -r RiverFlow-linux.zip  Dist/linux/
+          zip -r RiverFlow-windows.zip Dist/windows/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RiverFlow-dist
+          path: |
+            RiverFlow-linux.zip
+            RiverFlow-windows.zip
+          retention-days: 30

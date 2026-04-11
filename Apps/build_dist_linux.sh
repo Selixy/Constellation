@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build Rust apps and place outputs in Dist/linux/{client,serveur}
+# Build et package les apps RiverFlow pour Linux
+#   - ClientNDI  : Rust (cargo)
+#   - Server     : Python UV + PyInstaller
 #
 # Usage:
 #   ./build_dist_linux.sh
@@ -29,56 +31,57 @@ find_ndi_lib() {
     "/opt/ndi/lib/x86_64-linux-gnu/libndi.so.6"
     "/usr/share/NDI SDK for Linux/lib/x86_64-linux-gnu/libndi.so.6"
     "/usr/share/NDI SDK for Linux/lib/x86_64-linux-gnu/libndi.so.6.3.1"
-    "/usr/lib/Processing.NDI.Lib.x86_64.so"
-    "/usr/local/lib/Processing.NDI.Lib.x86_64.so"
-    "/opt/ndi/lib/x86_64-linux-gnu/Processing.NDI.Lib.x86_64.so"
-    "/usr/share/NDI SDK for Linux/lib/x86_64-linux-gnu/Processing.NDI.Lib.x86_64.so"
   )
-
   for c in "${candidates[@]}"; do
     if [[ -n "$c" && -f "$c" ]]; then
-      echo "$c"
-      return 0
+      echo "$c"; return 0
     fi
   done
-
   return 1
 }
 
-echo "[1/4] Build server (release)..."
+# ── 1. Build ClientNDI (Rust) ──────────────────────────────────────────────────
+echo "[1/4] Build ClientNDI (Rust, release)..."
 cd "$SCRIPT_DIR"
-cargo build -p riverflow-server --release
-
-echo "[2/4] Build client (release)..."
 if [[ "$ENABLE_NDI" -eq 1 ]]; then
   if ! cargo build -p riverflow-client-ndi --release --features ndi; then
-    echo "Warning: NDI-feature build failed, falling back to standard build (NO SIGNAL mode)."
+    echo "Warning: NDI build failed, fallback sans feature NDI."
     cargo build -p riverflow-client-ndi --release
   fi
 else
   cargo build -p riverflow-client-ndi --release
 fi
 
-echo "[3/4] Copy binaries to Dist/linux/..."
-mkdir -p "$CLIENT_OUT" "$SERVER_OUT"
-cp "$SCRIPT_DIR/target/release/riverflow-server" "$SERVER_OUT/riverflow-server"
-cp "$SCRIPT_DIR/target/release/riverflow-client-ndi" "$CLIENT_OUT/riverflow-client-ndi"
-chmod +x "$SERVER_OUT/riverflow-server" "$CLIENT_OUT/riverflow-client-ndi"
+# ── 2. Build Server (Python / PyInstaller) ─────────────────────────────────────
+echo "[2/4] Build Server Python (PyInstaller)..."
+cd "$SCRIPT_DIR/Server"
+# Installe les deps + pyinstaller via uv si pas déjà fait
+uv sync --group dev
+uv run pyinstaller \
+  --onedir \
+  --name riverflow-server \
+  --distpath "$SERVER_OUT" \
+  --workpath /tmp/pyinstaller_build_server \
+  --specpath /tmp/pyinstaller_spec_server \
+  src/riverflow_server/main.py
 
+# ── 3. Copie ClientNDI dans Dist ───────────────────────────────────────────────
+echo "[3/4] Copie ClientNDI dans Dist/linux/client..."
+mkdir -p "$CLIENT_OUT"
+cp "$SCRIPT_DIR/target/release/riverflow-client-ndi" "$CLIENT_OUT/riverflow-client-ndi"
+chmod +x "$CLIENT_OUT/riverflow-client-ndi"
 if [[ -f "$SCRIPT_DIR/target/release/riverflow-client-ndi.yaml" ]]; then
   cp "$SCRIPT_DIR/target/release/riverflow-client-ndi.yaml" "$CLIENT_OUT/riverflow-client-ndi.yaml"
 fi
 
-echo "[4/4] Optional NDI runtime copy..."
+# ── 4. NDI runtime optionnel ───────────────────────────────────────────────────
+echo "[4/4] NDI runtime optionnel..."
 if [[ "$ENABLE_NDI" -eq 1 ]]; then
   if ! NDI_LIB_PATH="$(find_ndi_lib)"; then
-    echo "NDI runtime lib not found."
-    echo "Provide path as second argument:"
-    echo "  ./build_dist_linux.sh --ndi /path/to/libndi.so.6.3.1"
+    echo "NDI runtime lib non trouvée."
+    echo "Fournir le chemin : ./build_dist_linux.sh --ndi /path/to/libndi.so.6.3.1"
     exit 1
   fi
-
-  # NDI Linux runtime is expected as libndi.so.6 at runtime.
   if [[ "$(basename "$NDI_LIB_PATH")" == libndi.so* ]]; then
     local_ndi_file="$(basename "$NDI_LIB_PATH")"
     cp "$NDI_LIB_PATH" "$CLIENT_OUT/$local_ndi_file"
@@ -95,15 +98,12 @@ export LD_LIBRARY_PATH="$SELF_DIR:${LD_LIBRARY_PATH:-}"
 exec "$SELF_DIR/riverflow-client-ndi" "$@"
 EOF
   chmod +x "$CLIENT_OUT/run.sh"
-  echo "NDI runtime bundled in Dist/linux/client"
+  echo "NDI runtime bundlé dans Dist/linux/client"
 else
-  echo "NDI feature disabled (client will run in NO SIGNAL mode only)"
+  echo "NDI désactivé (mode NO SIGNAL)"
 fi
 
 echo
-echo "Done. Outputs:"
-echo "- $SERVER_OUT/riverflow-server"
+echo "Done. Sorties :"
 echo "- $CLIENT_OUT/riverflow-client-ndi"
-if [[ -f "$CLIENT_OUT/riverflow-client-ndi.yaml" ]]; then
-  echo "- $CLIENT_OUT/riverflow-client-ndi.yaml"
-fi
+echo "- $SERVER_OUT/riverflow-server/"

@@ -74,6 +74,7 @@ def build_client_ndi() -> bool:
 def build_server_mocap() -> bool:
     print("\n=== Build: Server Mocap (Linux + Windows) ===")
 
+    server_dir = APPS / "Server"
     dist_linux = ROOT / "Dist/linux/serveur"
     dist_win   = ROOT / "Dist/windows/serveur"
     dist_linux.mkdir(parents=True, exist_ok=True)
@@ -81,37 +82,48 @@ def build_server_mocap() -> bool:
 
     ok = True
 
+    # ── Linux : uv + PyInstaller ──────────────────────────────────────────────
     print("\n[Linux]")
-    result = subprocess.run(
-        ["cargo", "build", "-p", "riverflow-server", "--release"],
-        cwd=APPS
-    )
-    if result.returncode == 0:
-        src = APPS / "target/release/riverflow-server"
-        shutil.copy2(src, dist_linux / "riverflow-server")
-        (dist_linux / "riverflow-server").chmod(0o755)
-        run_sh = dist_linux / "run.sh"
-        run_sh.write_text(
-            "#!/usr/bin/env bash\n"
-            "set -euo pipefail\n"
-            'SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
-            'exec "$SELF_DIR/riverflow-server" "$@"\n'
+    # Installe les deps (dont pyinstaller) si besoin
+    if subprocess.run(["uv", "sync", "--group", "dev"], cwd=server_dir).returncode != 0:
+        print("  ✗ uv sync échoué")
+        ok = False
+    else:
+        result = subprocess.run(
+            [
+                "uv", "run", "pyinstaller",
+                "--onedir",
+                "--name", "riverflow-server",
+                "--distpath", str(dist_linux),
+                "--workpath", "/tmp/pyinstaller_build_server",
+                "--specpath", "/tmp/pyinstaller_spec_server",
+                "--noconfirm",
+                "src/riverflow_server/main.py",
+            ],
+            cwd=server_dir,
         )
-        run_sh.chmod(0o755)
-        print(f"  ✓ {dist_linux}/riverflow-server")
-    else:
-        print("  ✗ Build Linux server-mocap échoué")
-        ok = False
+        if result.returncode == 0:
+            # run.sh placé à côté du dossier riverflow-server/
+            run_sh = dist_linux / "run.sh"
+            run_sh.write_text(
+                "#!/usr/bin/env bash\n"
+                "set -euo pipefail\n"
+                'SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n'
+                'exec "$SELF_DIR/riverflow-server/riverflow-server" "$@"\n'
+            )
+            run_sh.chmod(0o755)
+            print(f"  ✓ {dist_linux}/riverflow-server/")
+        else:
+            print("  ✗ Build Linux server-mocap échoué (PyInstaller)")
+            ok = False
 
+    # ── Windows : GitHub Actions (runner windows-latest) ─────────────────────
     print("\n[Windows]")
-    if run(["cargo", "build", "-p", "riverflow-server", "--release",
-            "--target", "x86_64-pc-windows-gnu"], cwd=APPS):
-        src = APPS / "target/x86_64-pc-windows-gnu/release/riverflow-server.exe"
-        shutil.copy2(src, dist_win / "riverflow-server.exe")
-        print(f"  ✓ {dist_win}/riverflow-server.exe")
-    else:
-        print("  ✗ Build Windows server-mocap échoué")
-        ok = False
+    print("  ⚠ Python+Qt ne supporte pas la cross-compilation depuis Linux.")
+    print("    → Le build Windows est géré automatiquement par GitHub Actions.")
+    print("    → Push sur main ou déclencher manuellement :")
+    print("       GitHub → Actions → Build RiverFlow → Run workflow")
+    print("    → L'artefact RiverFlow-windows.zip sera disponible en téléchargement.")
 
     return ok
 
